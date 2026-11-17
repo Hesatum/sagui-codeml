@@ -22,6 +22,7 @@ TEST_ORDER = [('M8a', 'M8'), ('M1a', 'M2a'), ('M7', 'M8'),
               ('Branch-site_null', 'Branch-site'), ('M0', 'Branch'), ('M0', 'M1a')]
 SITE_ALTS = ('M2a', 'M8')
 POSITIVE_PAIRS = (('M1a', 'M2a'), ('M7', 'M8'), ('M8a', 'M8'))
+SITE_EVIDENCE_PAIRS = (('M1a', 'M2a'), ('M8a', 'M8'))
 
 # journal formats: vector PDF/SVG, 600 dpi TIFF, 300 dpi PNG; 180 mm wide (two columns)
 CHART_FORMATS = [("PDF (vector)", "*.pdf"), ("TIFF, 600 dpi", "*.tif"),
@@ -51,7 +52,10 @@ def gene_verdict(sig_by_pair: dict, rows: list) -> Tuple[str, str]:
     sig_tests = [t for t, sig, *_ in rows if sig]
     if not sig_tests:
         return 'none', TEXTS["conclusion_none"]
-    n = max((r[5] for r in rows if r[1] and r[5] is not None), default=None)
+    # sites count only through a significant test whose null fixes ω = 1 (M2a vs M1a,
+    # M8 vs M8a): M8 vs M7 can be significant without ω > 1 (METHODS.md, "Evidence")
+    evidence = {test_label(p) for p in SITE_EVIDENCE_PAIRS}
+    n = max((r[5] for r in rows if r[1] and r[0] in evidence and r[5] is not None), default=None)
     if n == 0:
         w = max((r[6] for r in rows if r[1] and len(r) > 6 and pd.notna(r[6])), default=np.nan)
         p1 = max((r[7] for r in rows if r[1] and len(r) > 7 and pd.notna(r[7])), default=np.nan)
@@ -621,7 +625,7 @@ class SummaryTab:
     def _summary_export_table(self):
         null, alt = self._sum['test']
         col = lrt_stats.lrt_column(null, alt)
-        name = f"EasyPAML_{test_label((null, alt)).replace(' ', '_')}"
+        name = f"SAGUI_{test_label((null, alt)).replace(' ', '_')}"
         path = ask_save_file(self, TEXTS["summary_export_table"], self.output_folder,
                              initialfile=f"{name}.csv", defaultextension='.csv',
                              filetypes=[("CSV", "*.csv"), ("Excel", "*.xlsx")])

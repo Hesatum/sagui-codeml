@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EasyPAML: positive selection analysis with PAML/codeml (window entry point)."""
+"""SAGUI: positive selection analysis with PAML/codeml (window entry point)."""
 import sys
 import os
 from pathlib import Path
@@ -10,7 +10,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-# Run from the EasyPAML folder (one above src/), so relative paths work however
+# Run from the sagui-codeml folder (one above src/), so relative paths work however
 # the program was opened (double-click, shortcut, terminal).
 _ROOT = Path(__file__).resolve().parents[1]
 os.chdir(_ROOT)
@@ -31,11 +31,11 @@ if sys.platform == 'win32' and sys.prefix != sys.base_prefix:
 try:
     import tkinter  # noqa: F401
 except ImportError:
-    print("EasyPAML needs tkinter (Python's window toolkit), which is not installed.\n"
+    print("SAGUI needs tkinter (Python's window toolkit), which is not installed.\n"
           "  Ubuntu/Debian: sudo apt install python3-tk\n"
           "  Fedora:        sudo dnf install python3-tkinter\n"
           "  macOS (brew):  brew install python-tk\n"
-          "The command line works without it: ./easypaml-cli.sh --help")
+          "The command line works without it: ./sagui-cli.sh --help")
     sys.exit(1)
 def _import_app():
     from src.gui.main_gui import App
@@ -51,7 +51,7 @@ try:
 except ImportError as exc:
     print(f"Missing dependency: {exc}\n"
           "Run the installer (Linux/macOS: ./INSTALL_LINUX_MAC.sh · Windows: INSTALL_WINDOWS.bat),\n"
-          "then open the program with the EasyPAML.sh or EasyPAML.bat it creates.")
+          "then open the program with the SAGUI.sh or SAGUI.bat it creates.")
     sys.exit(1)
 
 

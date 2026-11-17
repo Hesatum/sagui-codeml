@@ -1,4 +1,4 @@
-"""EasyPAML version, shown under About, by --version and in run_config.json.
+"""SAGUI version, shown under About, by --version and in run_config.json.
 
 The exact commit comes from git in a clone, or from _commit.txt, which GitHub
 fills in when it builds a ZIP or tar.gz (export-subst in .gitattributes)."""

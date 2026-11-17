@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-EasyPAML command-line mode, for servers and many genes.
+SAGUI command-line mode, for servers and many genes.
 
 Examples:
 
-  ./easypaml-cli.sh --input examples/alignments --tree examples/tree.nwk \\
+  ./sagui-cli.sh --input examples/alignments --tree examples/tree.nwk \\
       --output results/ --models M7,M8,M8a --workers 24
 
-  ./easypaml-cli.sh --config my_run.json    # the same options as JSON
+  ./sagui-cli.sh --config my_run.json    # the same options as JSON
 
-(easypaml-cli.bat on Windows; both are created by the installer.)
+(sagui-cli.bat on Windows; both are created by the installer.)
 
 --skip-beb stops M2a and M8 when codeml starts the BEB step, the slowest part.
 lnL, np and omega, which the LRT uses, are already written by then, so the test
@@ -29,7 +29,7 @@ from pathlib import Path
 
 # Force UTF-8 output: with stdout redirected or piped (> log.txt, | more, a
 # scheduler), Windows falls back to cp1252 and print() of κ/ω raises
-# UnicodeEncodeError. Same fix as easypaml_window.py.
+# UnicodeEncodeError. Same fix as sagui_window.py.
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, 'reconfigure'):
         _stream.reconfigure(encoding='utf-8', errors='replace')
@@ -47,12 +47,12 @@ _CODONFREQ_HELP = ", ".join(f"{v}={n}" for v, n, _ in CODONFREQ_OPTIONS)
 
 def parse_args():
     ap = argparse.ArgumentParser(
-        prog="easypaml-cli",
-        description="EasyPAML: batch codeml analyses without the window.",
+        prog="sagui-cli",
+        description="SAGUI: batch codeml analyses without the window.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    ap.add_argument('--version', action='version', version=f"EasyPAML {version_string()}")
+    ap.add_argument('--version', action='version', version=f"SAGUI {version_string()}")
     ap.add_argument('--config', type=Path, help="JSON file with the options below (overrides the flags)")
     ap.add_argument('--input', type=Path, help="folder with .fas/.fasta/.phy/.phylip files, one per gene")
     ap.add_argument('--tree', type=Path, help="Newick tree file (with or without an 'N  1' header); "
@@ -77,7 +77,7 @@ def parse_args():
     ap.add_argument('--ignore-stop-codons', action='store_true',
                     help="run genes with an internal stop codon (codeml treats the column as missing data). "
                          "Without it those genes fail and the stop position is reported.")
-    ap.add_argument('--codeml', type=Path, help="codeml executable (default: EASYPAML_CODEML, bin/codeml, "
+    ap.add_argument('--codeml', type=Path, help="codeml executable (default: SAGUI_CODEML, bin/codeml, "
                                                 "or codeml on PATH)")
     ap.add_argument('--idle-timeout', type=int, default=300,
                     help="stop codeml after N s without CPU use (default: 300; 0 turns it off)")
@@ -101,6 +101,9 @@ def parse_args():
                     help="fit M0 first and use its kappa and branch lengths as starting values for the "
                          "site models, with omega started from 0.2, 1.0 and 2.5 (best lnL kept). Faster, "
                          "but not guaranteed to match a fit from scratch. Off by default.")
+    ap.add_argument('--beta-starts', type=int, default=CodemlBatchAnalysis.DEFAULT_BETA_STARTS,
+                    help="codeml runs of M7, M8 and M8a from different starting values; the best lnL "
+                         f"is kept (default: {CodemlBatchAnalysis.DEFAULT_BETA_STARTS}; 1 = a single run)")
     args = ap.parse_args()
 
     if args.config:
@@ -139,6 +142,7 @@ def parse_args():
         cfg.setdefault('two_pass', False)
         cfg.setdefault('sig_threshold', 0.05)
         cfg.setdefault('warm_start_m0', False)
+        cfg.setdefault('beta_starts', args.beta_starts)
         # models may be a JSON list or a "A,B,C" string as in --models
         if isinstance(cfg['models'], str):
             cfg['models'] = [m.strip() for m in cfg['models'].split(',') if m.strip()]
@@ -162,6 +166,7 @@ def parse_args():
         'two_pass': args.two_pass,
         'sig_threshold': args.sig_threshold,
         'warm_start_m0': args.warm_start_m0,
+        'beta_starts': args.beta_starts,
         'codonfreq': args.codonfreq,
         'ncatg': args.ncatg,
         'kappa': args.kappa,
@@ -187,6 +192,7 @@ def _make_app(cfg, input_folder, output_folder, models, skip_beb):
         'models': models, 'timeout': cfg['timeout'], 'run_lrt': cfg['run_lrt'],
         'n_workers': cfg['workers'], 'auto_prune_tree': cfg['auto_prune_tree'], 'skip_beb': skip_beb,
         'warm_start_m0': cfg.get('warm_start_m0', False),
+        'beta_starts': cfg.get('beta_starts', CodemlBatchAnalysis.DEFAULT_BETA_STARTS),
         'CodonFreq': cfg.get('codonfreq', DEFAULT_CODONFREQ),
         'ncatG': cfg.get('ncatg', 10),
         'kappa': cfg.get('kappa', 2.0),
@@ -281,7 +287,7 @@ def main():
 
     codeml_path = find_codeml(cfg.get('codeml'))
     print("=" * 72)
-    print(f"EasyPAML {version_string()} -- CLI")
+    print(f"SAGUI {version_string()} -- CLI")
     print("=" * 72)
     for k, v in cfg.items():
         if k == 'tree' and v is None and per_gene:

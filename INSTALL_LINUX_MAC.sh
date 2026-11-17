@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# EasyPAML installer for Linux and macOS.
+# SAGUI installer for Linux and macOS.
 #
 # Creates an isolated Python environment in .venv/ inside this folder and
 # installs the dependencies there, without --user and without touching the
@@ -37,7 +37,7 @@ pkg_hint() {
 
 echo ""
 echo " ============================================================"
-echo "  EasyPAML installer (Linux / macOS)"
+echo "  SAGUI installer (Linux / macOS)"
 echo " ============================================================"
 echo ""
 
@@ -73,7 +73,7 @@ fi
 ok "venv available"
 if ! "$PYTHON" -c 'import tkinter' >/dev/null 2>&1; then
     MISSING_TK=1
-    warn "tkinter not installed: the EasyPAML window needs it (the command line works without it)."
+    warn "tkinter not installed: the SAGUI window needs it (the command line works without it)."
     echo "      To install it:"
     pkg_hint "python3-tk" "python3-tkinter" "python-tk@$PYVER"
 else
@@ -93,7 +93,7 @@ fi
 VENV_PY="$SCRIPT_DIR/.venv/bin/python"
 "$VENV_PY" -m pip install --upgrade pip --quiet --disable-pip-version-check || \
     warn "could not update pip; continuing with the current version"
-# the exact versions EasyPAML was tested with; the minimum versions when they have
+# the exact versions SAGUI was tested with; the minimum versions when they have
 # no package for this Python
 if "$VENV_PY" -m pip install -r tools/requirements-lock.txt --disable-pip-version-check --quiet; then
     ok "Dependencies installed in .venv/ (tested versions, requirements-lock.txt)"
@@ -140,48 +140,48 @@ else
         rm -rf "$TMP_DIR"
     fi
     if [ "$CODEML_OK" -eq 0 ]; then
-        warn "codeml was not installed. EasyPAML opens, but needs it to run analyses:"
+        warn "codeml was not installed. SAGUI opens, but needs it to run analyses:"
         pkg_hint "paml" "paml" "brewsci/bio/paml"
     fi
 fi
 
 # ── 5. Launchers ─────────────────────────────────────────────────────────────
-# written here, so the folder shows only the installer until EasyPAML is installed
+# written here, so the folder shows only the installer until SAGUI is installed
 echo ""
 echo "[5/5] Launchers..."
-cat > "$SCRIPT_DIR/EasyPAML.sh" <<'LAUNCHER'
+cat > "$SCRIPT_DIR/SAGUI.sh" <<'LAUNCHER'
 #!/usr/bin/env bash
-# Opens the EasyPAML window. Created by INSTALL_LINUX_MAC.sh.
+# Opens the SAGUI window. Created by INSTALL_LINUX_MAC.sh.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ ! -x "$DIR/.venv/bin/python" ]; then
-    echo "EasyPAML is not installed in this folder. Run ./INSTALL_LINUX_MAC.sh first."
+    echo "SAGUI is not installed in this folder. Run ./INSTALL_LINUX_MAC.sh first."
     exit 1
 fi
-exec "$DIR/.venv/bin/python" "$DIR/src/easypaml_window.py" "$@"
+exec "$DIR/.venv/bin/python" "$DIR/src/sagui_window.py" "$@"
 LAUNCHER
-cat > "$SCRIPT_DIR/easypaml-cli.sh" <<'LAUNCHER'
+cat > "$SCRIPT_DIR/sagui-cli.sh" <<'LAUNCHER'
 #!/usr/bin/env bash
-# EasyPAML command line (./easypaml-cli.sh --help). Created by INSTALL_LINUX_MAC.sh.
+# SAGUI command line (./sagui-cli.sh --help). Created by INSTALL_LINUX_MAC.sh.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$DIR/.venv/bin/python" "$DIR/src/easypaml_cli.py" "$@"
+exec "$DIR/.venv/bin/python" "$DIR/src/sagui_cli.py" "$@"
 LAUNCHER
-chmod +x "$SCRIPT_DIR/EasyPAML.sh" "$SCRIPT_DIR/easypaml-cli.sh"
-ok "EasyPAML.sh (window) and easypaml-cli.sh (command line) created"
+chmod +x "$SCRIPT_DIR/SAGUI.sh" "$SCRIPT_DIR/sagui-cli.sh"
+ok "SAGUI.sh (window) and sagui-cli.sh (command line) created"
 if [ "$OS" = "Linux" ] && [ -n "${HOME:-}" ]; then
     DESKTOP_DIR="$HOME/.local/share/applications"
     if mkdir -p "$DESKTOP_DIR" 2>/dev/null; then
-        cat > "$DESKTOP_DIR/EasyPAML.desktop" <<EOF
+        cat > "$DESKTOP_DIR/SAGUI.desktop" <<EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=EasyPAML
+Name=SAGUI
 Comment=Positive selection analysis with PAML/codeml
-Exec="$SCRIPT_DIR/EasyPAML.sh"
+Exec="$SCRIPT_DIR/SAGUI.sh"
 Path=$SCRIPT_DIR
 Terminal=false
 Categories=Science;Biology;
 EOF
-        ok "shortcut added to the applications menu (EasyPAML)"
+        ok "shortcut added to the applications menu (SAGUI)"
     fi
 fi
 
@@ -190,10 +190,10 @@ echo " ============================================================"
 echo "  INSTALLATION COMPLETE"
 echo " ============================================================"
 echo ""
-echo " To open EasyPAML:"
-cmd "./EasyPAML.sh"
+echo " To open SAGUI:"
+cmd "./SAGUI.sh"
 echo " Command line:"
-cmd "./easypaml-cli.sh --help"
+cmd "./sagui-cli.sh --help"
 if [ "$MISSING_TK" -eq 1 ]; then
     echo ""
     warn "install tkinter so the window can open:"

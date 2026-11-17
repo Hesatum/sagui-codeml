@@ -790,7 +790,7 @@ class App(ctk.CTk):
         super().__init__()
         self.withdraw()          # shown complete at the end, not piece by piece
         from backend.version import __version__
-        self.title(f"EasyPAML {__version__}")
+        self.title(f"SAGUI {__version__}")
         fit_to_screen(self, 1400, 850)
         
         
@@ -1845,7 +1845,7 @@ class App(ctk.CTk):
             self.append_log(traceback.format_exc(), "debug")
 
     _EXAMPLE_DIR = Path(__file__).resolve().parents[2] / 'examples' / 'quick'
-    _EXAMPLE_OUT = Path.home() / 'EasyPAML_example_results'
+    _EXAMPLE_OUT = Path.home() / 'SAGUI_example_results'
 
     def _load_example(self):
         """The two simulated genes of examples/quick, their tree, a results folder in
@@ -2148,7 +2148,7 @@ class App(ctk.CTk):
         seg.pack(side='left', fill='x', expand=True)
         self._theme_seg = seg
 
-    _RESTORE_ENV = 'EASYPAML_RESTORE'
+    _RESTORE_ENV = 'SAGUI_RESTORE'
 
     def _reopen(self) -> None:
         """Start a new window with the same folders and models, then close this one."""
@@ -2164,7 +2164,7 @@ class App(ctk.CTk):
             subprocess.Popen([sys.executable] + sys.argv, env=env)
             self.destroy()
         except Exception as exc:
-            show_message(self, "EasyPAML", TEXTS["lang_switch_err"].format(error=exc), 'error')
+            show_message(self, "SAGUI", TEXTS["lang_switch_err"].format(error=exc), 'error')
 
     def _restore_state(self) -> None:
         import json
@@ -2188,7 +2188,7 @@ class App(ctk.CTk):
 
     def _analysis_running(self) -> bool:
         if self.analysis_thread and self.analysis_thread.is_alive():
-            show_message(self, "EasyPAML", TEXTS["msg_wait_for_run"], 'warning')
+            show_message(self, "SAGUI", TEXTS["msg_wait_for_run"], 'warning')
             return True
         return False
 

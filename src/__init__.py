@@ -1,1 +1,1 @@
-# EasyPAML package
+# SAGUI package

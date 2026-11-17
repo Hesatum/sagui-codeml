@@ -1,6 +1,6 @@
-# EasyPAML
+# SAGUI
 
-EasyPAML runs PAML/codeml selection analyses on many genes at once, from a window or
+SAGUI runs PAML/codeml selection analyses on many genes at once, from a window or
 the command line. It fits the site models (M0, M1a, M2a, M7, M8, M8a), the branch and
 branch-site models, tests them with likelihood ratio tests corrected for the number
 of genes (Benjamini-Hochberg), and lists the sites under selection (BEB).
@@ -8,23 +8,23 @@ of genes (Benjamini-Hochberg), and lists the sites under selection (BEB).
 [METHODS.md](METHODS.md) describes what the program does to the data, for a methods
 section or a review. [CHANGELOG.md](CHANGELOG.md) lists the changes in each version.
 
-## What EasyPAML is for
+## What SAGUI is for
 
 codeml is powerful but easy to get wrong: a small problem in the files or a missing
-test can give a wrong answer without any error message. EasyPAML makes the analysis
+test can give a wrong answer without any error message. SAGUI makes the analysis
 easier to run and harder to get wrong. It checks your data before running, adds the
 tests a result needs, and explains the answer in plain terms.
 
 ## Which model answers your question
 
 - **Is any part of the gene under positive selection?** Use the site models. Switch
-  on M8: EasyPAML also runs M7 and M8a and lists the codons under selection. M2a,
+  on M8: SAGUI also runs M7 and M8a and lists the codons under selection. M2a,
   which adds M1a, is a second test of the same question.
 - **Does ω change along some lineages?** Use the Branch model. Label the lineages of
   interest in the tree (#1, #2…); each group gets its own ω, compared with a single ω
   for the whole tree (M0). A different ω alone does not mean positive selection.
 - **Are some codons under positive selection only on certain lineages?** Use the
-  Branch-site model. Label those lineages as the foreground (#1); EasyPAML runs the
+  Branch-site model. Label those lineages as the foreground (#1); SAGUI runs the
   test with its null and lists the codons.
 
 ## Installation
@@ -33,15 +33,15 @@ tests a result needs, and explains the answer in plain terms.
 
 ```bash
 sudo apt update && sudo apt install -y git python3-pip python3-venv python3-tk paml
-git clone https://github.com/Hesatum/EasyPAML.git
-cd EasyPAML
+git clone https://github.com/Hesatum/sagui-codeml.git
+cd sagui-codeml
 ./INSTALL_LINUX_MAC.sh
-./EasyPAML.sh
+./SAGUI.sh
 ```
 
 On Fedora, the first line is `sudo dnf install git python3-pip python3-tkinter paml`.
-The installer keeps everything inside the EasyPAML folder and creates `EasyPAML.sh`
-(the window) and `easypaml-cli.sh` (the command line). If something is missing, it
+The installer keeps everything inside the sagui-codeml folder and creates `SAGUI.sh`
+(the window) and `sagui-cli.sh` (the command line). If something is missing, it
 prints the command to run.
 
 **macOS.** Run `brew install python-tk brewsci/bio/paml`, then the last four lines
@@ -49,14 +49,14 @@ above.
 
 **Windows.** Install Python 3.8 or newer from [python.org](https://www.python.org/downloads/)
 with "Add Python to PATH" ticked. Download the
-[ZIP](https://github.com/Hesatum/EasyPAML/archive/refs/heads/main.zip), extract it,
-double-click `INSTALL_WINDOWS.bat`, and open EasyPAML from the desktop shortcut or
-`EasyPAML.bat`. If Windows shows "Windows protected your PC", click "More info" and
+[ZIP](https://github.com/Hesatum/sagui-codeml/archive/refs/heads/main.zip), extract it,
+double-click `INSTALL_WINDOWS.bat`, and open SAGUI from the desktop shortcut or
+`SAGUI.bat`. If Windows shows "Windows protected your PC", click "More info" and
 "Run anyway": the installer is a text script you can open and read. codeml comes in
 `bin/`.
 
 **A cited version.** To repeat a published analysis, run `git checkout v0.4.0` (or the
-commit it cites) in the EasyPAML folder before installing; versions up to 0.4.0 install
+commit it cites) in the sagui-codeml folder before installing; versions up to 0.4.0 install
 with `./install.sh`. A version shown as `0.4.0+3` is 3 commits after 0.4.0, so cite
 its commit.
 
@@ -94,10 +94,10 @@ The results panel opens at the end:
 ## Command line
 
 ```bash
-./easypaml-cli.sh --input FOLDER --tree TREE.nwk --output OUT --models M8 --workers 8
+./sagui-cli.sh --input FOLDER --tree TREE.nwk --output OUT --models M8 --workers 8
 ```
 
-On Windows, use `easypaml-cli.bat` with the same options.
+On Windows, use `sagui-cli.bat` with the same options.
 
 | Option | Default | Meaning |
 |---|---|---|
@@ -130,20 +130,20 @@ OUT/
 
 ## Troubleshooting
 
-- `./EasyPAML.sh: No such file or directory`: run `./INSTALL_LINUX_MAC.sh` first, in
-  the EasyPAML folder; it creates `EasyPAML.sh`.
+- `./SAGUI.sh: No such file or directory`: run `./INSTALL_LINUX_MAC.sh` first, in
+  the sagui-codeml folder; it creates `SAGUI.sh`.
 - `No module named 'tkinter'`: `sudo apt install python3-tk`.
 - "codeml not found": `sudo apt install paml` on Linux; on Windows, run
   `INSTALL_WINDOWS.bat` again. Another codeml can be set with
-  `EASYPAML_CODEML=/path/to/codeml`.
+  `SAGUI_CODEML=/path/to/codeml`.
 - A gene FAILED: the reason is in the window, in `genes_status.tsv` and in the log. A
   codeml that uses no CPU for 5 minutes is stopped and reported.
 - Windows, the window closes at once: run `INSTALL_WINDOWS.bat` again; to see the
-  error, run `EasyPAML.bat` from `cmd`.
+  error, run `SAGUI.bat` from `cmd`.
 
 ## License and citation
 
 MIT. Cite PAML: Yang Z (2007) PAML 4: Phylogenetic Analysis by Maximum Likelihood.
-*Mol Biol Evol* 24:1586–1591. Report the EasyPAML version and commit (under About or
+*Mol Biol Evol* 24:1586–1591. Report the SAGUI version and commit (under About or
 with `--version`) and the parameters; `methods_text.txt` puts them in one paragraph
 for you to check.

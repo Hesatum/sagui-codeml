@@ -7,7 +7,7 @@
 .venv/bin/python -m pytest -q     # tests
 ```
 
-`EASYPAML_TEST_CODEML=/path/to/codeml` also runs the test that uses a real codeml.
+`SAGUI_TEST_CODEML=/path/to/codeml` also runs the test that uses a real codeml.
 
 The batch runner can be driven from Python:
 
@@ -27,11 +27,11 @@ When investigating a run, start with `OUT/run_config.json` and `OUT/genes_status
 ## Layout of the repository
 
 ```
-EasyPAML/
-├── INSTALL_LINUX_MAC.sh  installer; writes EasyPAML.sh and easypaml-cli.sh
-├── INSTALL_WINDOWS.bat   installer; writes EasyPAML.bat, easypaml-cli.bat and a shortcut
+SAGUI/
+├── INSTALL_LINUX_MAC.sh  installer; writes SAGUI.sh and sagui-cli.sh
+├── INSTALL_WINDOWS.bat   installer; writes SAGUI.bat, sagui-cli.bat and a shortcut
 ├── bin/codeml.exe        codeml for Windows (PAML 4.9j)
-├── src/                  code; entry points easypaml_window.py and easypaml_cli.py
+├── src/                  code; entry points sagui_window.py and sagui_cli.py
 ├── tests/                tests (pytest) and simulated data
 ├── examples/             example data
 ├── tools/                requirements.txt (minimum versions), requirements-lock.txt
@@ -57,7 +57,7 @@ EasyPAML/
 | `src/backend/messages.py` | backend messages (English and Portuguese) |
 | `src/gui/main_gui.py`, `results_viewer.py` | main window, results panel |
 | `src/gui/gui_texts.py` | every interface text (English and Portuguese) |
-| `tools/benchmark_vs_raw.py` | compares plain codeml with the EasyPAML command line on the same gene |
+| `tools/benchmark_vs_raw.py` | compares plain codeml with the SAGUI command line on the same gene |
 
 ## Before changing behaviour
 

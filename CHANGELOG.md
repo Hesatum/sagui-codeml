@@ -4,18 +4,39 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- EasyPAML is now SAGUI, at https://github.com/Hesatum/sagui-codeml. The launchers
+  are `SAGUI.sh`/`SAGUI.bat` and `sagui-cli.sh`/`sagui-cli.bat`, the Python entry
+  points `src/sagui_window.py` and `src/sagui_cli.py`, and the codeml variable
+  `SAGUI_CODEML`. The old names are not kept: run the installer again in the new
+  folder.
 - The top folder shows only `INSTALL_LINUX_MAC.sh`, `INSTALL_WINDOWS.bat`, the
   documents and the folders. The installer writes the launchers for its own system
-  (`EasyPAML.sh` and `easypaml-cli.sh`, or `EasyPAML.bat` and `easypaml-cli.bat`);
+  (`SAGUI.sh` and `sagui-cli.sh`, or `SAGUI.bat` and `sagui-cli.bat`);
   the Python entry points are in `src/` and the requirements in `tools/`.
 - The Windows installer creates the desktop shortcut without changing the PowerShell
   execution policy.
 - Windows: the main window no longer stays hidden at start-up; windows fit the screen
-  at 125 % and 150 % display scaling; `EasyPAML.bat` keeps the console open with the
+  at 125 % and 150 % display scaling; `SAGUI.bat` keeps the console open with the
   error when the program crashes; the window opens with Python 3.13.0 inside `.venv`
   (CPython gh-125235); the command line prints UTF-8 when its output is redirected.
 - Branch tree: the ω of a label is written once per labelled clade, and labelled
   branches are coloured along their whole length.
+- BEB/NEB sites whose residue in the first sequence is `-`, `?` or `*` (possible with
+  `cleandata = 0`) are no longer dropped from `sites_BEB.tsv` and the site counts.
+- 2Δℓ below −0.01 is no longer turned into p = 1: the alternative model is run again
+  from other starting values, and if 2Δℓ stays negative the test is reported as an
+  optimisation failure, without p-value and outside the BH correction.
+- "Evidence": M8 sites count only through M8 vs M8a (and M2a sites through M2a vs
+  M1a), as METHODS.md says; before, M8 vs M7 with M8 sites could give "Supported".
+- `run_config.json` records the CodonFreq actually used (it showed 2 for any
+  `--codonfreq`), and per gene and model the starting values of the kept run (κ,
+  `fix_blength`, initial ω), the number of starts and their lnL.
+- The ω of M2a and M8 in `analysis_summary.tsv` was wrong in trees of 4 taxa (NEB
+  rows read as branches) and when dS = 0 (999 dropped).
+- The codon columns removed by `cleandata = 1` are reported in the log,
+  `genes_status.tsv`, `methods_text.txt` and `run_config.json`.
+- M7, M8 and M8a are each run from 5 starts by default (`--beta-starts`), keeping the
+  best lnL.
 
 ## [0.4.0] 2026-10-08
 

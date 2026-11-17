@@ -1,5 +1,5 @@
 """
-Methods paragraph built from what a run did: EasyPAML version and commit,
+Methods paragraph built from what a run did: SAGUI version and commit,
 codeml version, models, .ctl parameters, each LRT with df and null
 distribution, and the number of genes in each Benjamini-Hochberg correction.
 Written to methods_text.txt in the output folder for the user to review.
@@ -26,16 +26,17 @@ def build_methods_text(*, version: str, codeml_version: Optional[str], models: L
                        beb: bool = True, masked_stops: Optional[Dict[str, int]] = None,
                        excluded_taxa: Optional[Dict[str, List[str]]] = None,
                        warm_start: bool = False, omega_starts: Sequence[float] = (),
-                       n_own_trees: int = 0) -> str:
+                       n_own_trees: int = 0, beta_starts: int = 1,
+                       cleandata_removed: Optional[Dict[str, Tuple[int, int]]] = None) -> str:
     cf = ctl.get('CodonFreq')
     cf_name = CODONFREQ_NAMES.get(int(cf), str(cf)) if cf is not None else '?'
     site = [m for m in _SITE_MODELS if m in models]
     other = [m.replace('_null', ' null') for m in models if m not in _SITE_MODELS]
     fitted = site + other
 
-    url = "https://github.com/Hesatum/EasyPAML"
+    url = "https://github.com/Hesatum/sagui-codeml"
     cite = f"{version[:-1]}; {url})" if version.endswith(')') else f"{version} ({url})"
-    s = [f"Selection was tested with EasyPAML {cite} "
+    s = [f"Selection was tested with SAGUI {cite} "
          f"running codeml from PAML {codeml_version or 'v?'} (Yang 2007) on {n_genes} gene(s)."]
     s.append(f"Models {_join(fitted)} were fitted with codon frequencies {cf_name} "
              f"(CodonFreq = {cf})"
@@ -45,6 +46,20 @@ def build_methods_text(*, version: str, codeml_version: Optional[str], models: L
              + ("alignment columns with gaps, ambiguous characters or stop codons removed "
                 "(cleandata = 1)." if int(ctl.get('cleandata', 1)) == 1
                 else "all alignment columns kept (cleandata = 0)."))
+    if cleandata_removed and int(ctl.get('cleandata', 1)) == 1:
+        removed = sum(r for r, _ in cleandata_removed.values())
+        total = sum(t for _, t in cleandata_removed.values())
+        pct = [100 * r / t for r, t in cleandata_removed.values() if t]
+        if total:
+            s.append(f"In total, {removed} of {total} codon columns ({100 * removed / total:.1f}%) "
+                     "were removed"
+                     + (f" (per gene {min(pct):.1f}–{max(pct):.1f}%; listed in run_config.json)"
+                        if len(pct) > 1 else "") + ".")
+    beta = [m for m in ('M7', 'M8', 'M8a') if m in models]
+    if beta and beta_starts > 1:
+        s.append(f"{_join(beta)} {'were each' if len(beta) > 1 else 'was'} fitted from "
+                 f"{beta_starts} starts (codeml's random initial values, with different initial ω), "
+                 "keeping the highest log-likelihood.")
     if n_own_trees:
         s.append(("Each gene was analysed with its own tree" if n_own_trees >= n_genes else
                   f"{n_own_trees} of the {n_genes} gene(s) were analysed with their own tree and the "

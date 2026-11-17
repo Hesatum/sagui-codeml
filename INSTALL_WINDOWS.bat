@@ -5,7 +5,7 @@ cd /d "%~dp0"
 
 echo.
 echo  ============================================================
-echo   EasyPAML installer for Windows
+echo   SAGUI installer for Windows
 echo   Positive selection analysis with PAML/codeml
 echo  ============================================================
 echo.
@@ -131,55 +131,55 @@ set APP_DIR=%~dp0
 set APP_DIR=!APP_DIR:~0,-1!
 
 REM ── 5. Launchers and desktop shortcut ──────────────────────────────────────
-REM Written here, so the folder shows only the installer until EasyPAML is installed.
+REM Written here, so the folder shows only the installer until SAGUI is installed.
 echo.
-echo [4/4] Creating EasyPAML.bat, easypaml-cli.bat and a desktop shortcut...
+echo [4/4] Creating SAGUI.bat, sagui-cli.bat and a desktop shortcut...
 
 setlocal disabledelayedexpansion
-> "EasyPAML.bat" (
+> "SAGUI.bat" (
     echo @echo off
     echo setlocal
-    echo REM Opens the EasyPAML window. Created by INSTALL_WINDOWS.bat.
+    echo REM Opens the SAGUI window. Created by INSTALL_WINDOWS.bat.
     echo cd /d "%%~dp0"
     echo if exist ".venv\Scripts\python.exe" ^(
-    echo     ".venv\Scripts\python.exe" src\easypaml_window.py
+    echo     ".venv\Scripts\python.exe" src\sagui_window.py
     echo ^) else ^(
-    echo     %PYTHON% src\easypaml_window.py
+    echo     %PYTHON% src\sagui_window.py
     echo ^)
-    echo set "EASYPAML_RC=%%errorlevel%%"
+    echo set "SAGUI_RC=%%errorlevel%%"
     echo REM "if errorlevel 1" misses negative codes ^(native crashes, e.g. -1073741819^),
     echo REM so compare with 0 and keep the console open to show the error.
-    echo if not "%%EASYPAML_RC%%"=="0" ^(
+    echo if not "%%SAGUI_RC%%"=="0" ^(
     echo     echo.
-    echo     echo  EasyPAML closed with an error ^^^(exit code %%EASYPAML_RC%%^^^).
+    echo     echo  SAGUI closed with an error ^^^(exit code %%SAGUI_RC%%^^^).
     echo     echo  Read the messages above. If it does not start at all, run INSTALL_WINDOWS.bat again.
     echo     pause
     echo ^)
 )
-> "easypaml-cli.bat" (
+> "sagui-cli.bat" (
     echo @echo off
-    echo REM EasyPAML command line: easypaml-cli.bat --help. Created by INSTALL_WINDOWS.bat.
+    echo REM SAGUI command line: sagui-cli.bat --help. Created by INSTALL_WINDOWS.bat.
     echo if exist "%%~dp0.venv\Scripts\python.exe" ^(
-    echo     "%%~dp0.venv\Scripts\python.exe" "%%~dp0src\easypaml_cli.py" %%*
+    echo     "%%~dp0.venv\Scripts\python.exe" "%%~dp0src\sagui_cli.py" %%*
     echo ^) else ^(
-    echo     %PYTHON% "%%~dp0src\easypaml_cli.py" %%*
+    echo     %PYTHON% "%%~dp0src\sagui_cli.py" %%*
     echo ^)
 )
 endlocal
-echo  OK: EasyPAML.bat ^(window^) and easypaml-cli.bat ^(command line^) created
+echo  OK: SAGUI.bat ^(window^) and sagui-cli.bat ^(command line^) created
 
 REM a plain command, no script file, so no execution policy needs changing
 powershell -NoProfile -Command ^
-    "$s = (New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop') + '\EasyPAML.lnk');" ^
-    "$s.TargetPath = '!APP_DIR!\EasyPAML.bat';" ^
+    "$s = (New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop') + '\SAGUI.lnk');" ^
+    "$s.TargetPath = '!APP_DIR!\SAGUI.bat';" ^
     "$s.WorkingDirectory = '!APP_DIR!';" ^
-    "$s.Description = 'EasyPAML - positive selection analysis';" ^
+    "$s.Description = 'SAGUI - positive selection analysis';" ^
     "$s.Save()" >nul 2>&1
 
 if errorlevel 1 (
-    echo  Warning: shortcut not created ^(permission denied^). Use EasyPAML.bat.
+    echo  Warning: shortcut not created ^(permission denied^). Use SAGUI.bat.
 ) else (
-    echo  OK: "EasyPAML" shortcut created on the desktop
+    echo  OK: "SAGUI" shortcut created on the desktop
 )
 
 echo.
@@ -187,10 +187,10 @@ echo  ============================================================
 echo   INSTALLATION COMPLETE
 echo  ============================================================
 echo.
-echo  To open EasyPAML:
-echo    - double-click "EasyPAML" on the desktop
-echo    - or double-click EasyPAML.bat in this folder
-echo  Command line: easypaml-cli.bat --help
+echo  To open SAGUI:
+echo    - double-click "SAGUI" on the desktop
+echo    - or double-click SAGUI.bat in this folder
+echo  Command line: sagui-cli.bat --help
 echo.
 echo  Example data: examples\
 echo.

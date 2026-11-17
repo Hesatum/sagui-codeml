@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import time
 import shutil
+import itertools
 import re
 import threading
 import traceback
@@ -40,8 +41,8 @@ _CODEML_BIN = (_APP_ROOT / 'bin' / 'codeml.exe'
 
 
 def find_codeml(explicit: Optional[str] = None) -> Optional[str]:
-    """codeml to use: the argument, EASYPAML_CODEML, bin/codeml(.exe), then PATH."""
-    for cand in (explicit, os.environ.get('EASYPAML_CODEML')):
+    """codeml to use: the argument, SAGUI_CODEML, bin/codeml(.exe), then PATH."""
+    for cand in (explicit, os.environ.get('SAGUI_CODEML')):
         if cand and Path(cand).exists():
             # absolute(), not resolve(): on Debian/Ubuntu /usr/bin/codeml links to a
             # script that picks the program by the name it was called with
@@ -453,21 +454,7 @@ class CodemlBatchAnalysis:
         """.ctl text with every parameter written explicitly. Values come from
         ctl_params defaults, then the model, then the global options, then the
         user's edits for this model."""
-        params = dict(DEFAULT_CTL_PARAMS)
-        cfg = self.config or {}
-        skip = ('description', 'display_name')
-        for key, val in (model_config or {}).items():
-            if key not in skip and val not in (None, ''):
-                params[key] = val
-        for key in ('CodonFreq', 'ncatG', 'kappa', 'fix_kappa', 'icode', 'method',
-                    'Small_Diff', 'getSE', 'estFreq'):
-            if cfg.get(key) is not None:
-                params[key] = cfg[key]
-        custom = cfg.get('custom_model_params') or cfg.get('custom_model_configs') or {}
-        for key, val in (custom.get(model_name) or {}).items():
-            if key not in skip and val not in (None, ''):
-                params[key] = val
-
+        params = self._ctl_params(model_config, model_name)
         params['seqfile'] = seqfile
         params['treefile'] = treefile
         params['outfile'] = outfile
@@ -487,6 +474,26 @@ class CodemlBatchAnalysis:
             params['kappa'] = round(float(kappa), 4)
 
         return build_ctl_text(params)
+
+    def _ctl_params(self, model_config: dict, model_name: str = None) -> Dict[str, object]:
+        """.ctl parameters of a model before the per-run values (files, cleandata,
+        initial ω and κ, fix_blength): defaults < model < global options < user's
+        edits for this model. Used for the .ctl and for run_config.json."""
+        params = dict(DEFAULT_CTL_PARAMS)
+        cfg = self.config or {}
+        skip = ('description', 'display_name')
+        for key, val in (model_config or {}).items():
+            if key not in skip and val not in (None, ''):
+                params[key] = val
+        for key in ('CodonFreq', 'ncatG', 'kappa', 'fix_kappa', 'icode', 'method',
+                    'Small_Diff', 'getSE', 'estFreq'):
+            if cfg.get(key) is not None:
+                params[key] = cfg[key]
+        custom = cfg.get('custom_model_params') or cfg.get('custom_model_configs') or {}
+        for key, val in (custom.get(model_name) or {}).items():
+            if key not in skip and val not in (None, ''):
+                params[key] = val
+        return params
 
     @staticmethod
     def _extract_kappa(output_path: Path) -> Optional[float]:
@@ -602,10 +609,10 @@ class CodemlBatchAnalysis:
             wrapper[k] = v
         per_model = {}
         for m in cfg['models']:
-            mc = dict(self.MODEL_CONFIGS.get(m, {}))
-            mc.update((cfg.get('custom_model_params') or {}).get(m, {}))
-            ctl = self.effective_ctl_defaults()
-            ctl.update({k: v for k, v in mc.items() if k not in ('description', 'display_name')})
+            # the same merge as the .ctl (a global CodonFreq beats the model's default)
+            ctl = self._ctl_params(self.MODEL_CONFIGS.get(m, {}), m)
+            ctl['cleandata'] = int(cfg.get('cleandata', 1))
+            ctl['fix_blength'] = 0
             if m in self.NEUTRAL_MODELS:
                 ctl['fix_omega'], ctl['omega'] = 1, 1.0
             elif cfg.get('omega') is not None:
@@ -613,8 +620,8 @@ class CodemlBatchAnalysis:
             ctl['CodonFreq_name'] = codonfreq_label(ctl.get('CodonFreq'))
             per_model[m] = ctl
         data = {
-            'easypaml_version': __version__,
-            'easypaml_commit': source_commit(),
+            'sagui_version': __version__,
+            'sagui_commit': source_commit(),
             'codeml_path': codeml_path,
             'codeml_version': codeml_ver,
             'python_version': platform.python_version(),
@@ -635,6 +642,34 @@ class CodemlBatchAnalysis:
         out = Path(cfg['output_folder']) / 'run_config.json'
         out.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str), encoding='utf-8')
 
+    def _add_starts_to_run_config(self) -> None:
+        """run_config.json, after the run: the starting values each gene and model
+        actually used (initial ω, κ and fix_blength of the kept start, warm start from
+        M0 included), the number of starts and their lnL, and the codon columns that
+        cleandata removed."""
+        import json
+        path = Path(self.config['output_folder']) / 'run_config.json'
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+            starts = {}
+            for gene, models in sorted(self.results.items()):
+                for model, r in (models or {}).items():
+                    if r.get('start'):
+                        entry = dict(r['start'])
+                        entry['n_starts'] = r.get('n_starts', 1)
+                        if r.get('start_lnLs'):
+                            entry['start_lnLs'] = r['start_lnLs']
+                        if r.get('reoptimized'):
+                            entry['reoptimized_for_negative_lrt'] = True
+                        starts.setdefault(gene, {})[model] = entry
+            data['starts_by_gene'] = starts
+            data['cleandata_removed_codons'] = {
+                g: {'removed': rm, 'total': tot}
+                for g, (rm, tot) in sorted(getattr(self, 'cleandata_removed', {}).items())}
+            path.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str), encoding='utf-8')
+        except (OSError, ValueError) as exc:
+            self._log(f"[WARN] run_config.json: {exc}")
+
     def _write_methods_text(self, codeml_ver: Optional[str], n_genes: int) -> None:
         """methods_text.txt: a methods paragraph describing this run."""
         from .methods_text import build_methods_text
@@ -649,9 +684,11 @@ class CodemlBatchAnalysis:
                 masked_stops=dict(getattr(self, 'masked_stops', {})),
                 excluded_taxa=dict(getattr(self, 'excluded_taxa', {})),
                 warm_start=bool(cfg.get('warm_start_m0')), omega_starts=self._WARM_START_OMEGA_TRIALS,
-                n_own_trees=len(cfg.get('per_gene_trees') or {}))
+                n_own_trees=len(cfg.get('per_gene_trees') or {}),
+                beta_starts=self._n_starts('M7'),
+                cleandata_removed=dict(getattr(self, 'cleandata_removed', {})))
             out = Path(cfg['output_folder']) / 'methods_text.txt'
-            out.write_text("Suggested Methods text (generated by EasyPAML from this run; "
+            out.write_text("Suggested Methods text (generated by SAGUI from this run; "
                            "review before use)\n\n" + text + "\n", encoding='utf-8')
         except Exception as exc:
             self._log(f"[WARN] methods_text.txt: {exc}")
@@ -662,7 +699,7 @@ class CodemlBatchAnalysis:
         if not self.config:
             raise ValueError(
                 "self.config is empty: set input_folder, tree_file, output_folder and models "
-                "before calling run_batch_analysis() (see src/easypaml_cli.py or the GUI)."
+                "before calling run_batch_analysis() (see src/sagui_cli.py or the GUI)."
             )
 
         cfg = self.config
@@ -700,7 +737,12 @@ class CodemlBatchAnalysis:
         self.runs_done = 0
         self.running: Dict[str, Tuple[str, float]] = {}
         self.run_start_time = time.time()
+        cfg.setdefault('beta_starts', self.DEFAULT_BETA_STARTS)
+        self.cleandata_removed: Dict[str, Tuple[int, int]] = {}
         self.expected = self._expected_seconds(genes, cfg['models'])
+        for exp in self.expected.values():     # M7, M8 and M8a run once per start
+            for m in exp:
+                exp[m] *= self._n_starts(m)
         self.expected_total = sum(sum(m.values()) for m in self.expected.values()) or 1.0
         self.expected_done = 0.0
         self.expected_finished = 0.0     # expected seconds of the runs that ended
@@ -711,7 +753,7 @@ class CodemlBatchAnalysis:
             log.write("=" * 80 + "\n")
             log.write("CODEML BATCH ANALYSIS LOG\n")
             log.write("=" * 80 + "\n")
-            log.write(f"EasyPAML: {version_string()}\n")
+            log.write(f"SAGUI: {version_string()}\n")
             log.write(f"codeml: {codeml_path} (version {codeml_ver})\n")
             log.write(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             log.write(f"Input folder: {cfg['input_folder']}\n")
@@ -766,6 +808,7 @@ class CodemlBatchAnalysis:
             self._emit('info', self._t('lrt_start'))
             self._run_lrt_analysis()
         self._save_summary()
+        self._add_starts_to_run_config()
         self._write_methods_text(codeml_ver, len(genes))
 
         n_ok = sum(1 for s in self.gene_status.values() if s == 'ok')
@@ -994,9 +1037,12 @@ class CodemlBatchAnalysis:
             self._emit('debug', self._t('model_running', gene=gene, model=model_name))
             with self._results_lock:
                 self.running[gene] = (model_name, time.time())
-            if fitted_for_this is not None and cfg.get('warm_start_multistart', True):
+            warm = fitted_for_this is not None and cfg.get('warm_start_multistart', True)
+            omegas = self._start_omegas(model_name, warm)
+            if len(omegas) > 1:
                 result = self._run_model_multistart(fas_file, model_name, self._log_path,
-                                                    kappa_for_this, fitted_for_this, aln=aln)
+                                                    kappa_for_this, fitted_for_this, aln=aln,
+                                                    omegas=omegas)
             else:
                 result = self._run_single_analysis(fas_file=fas_file, model_name=model_name,
                                                    log_file=self._log_path,
@@ -1027,6 +1073,9 @@ class CodemlBatchAnalysis:
                                             reason=result.get('fail_reason', '?')))
 
         stopped = stop_event is not None and stop_event.is_set()
+        if not stopped:
+            self._reoptimize_negative_lrts(gene, fas_file, gene_results, aln,
+                                           gene_kappa, gene_fitted_tree)
         failed_models = [m for m, r in gene_results.items() if r.get('status') == 'failed']
         with self._results_lock:
             self.results[gene] = gene_results
@@ -1096,44 +1145,119 @@ class CodemlBatchAnalysis:
 
     # purifying, neutral and diversifying starting ω
     _WARM_START_OMEGA_TRIALS = (0.2, 1.0, 2.5)
+    # M7, M8 and M8a often stop on a local optimum (HIV M7 reached the best lnL in
+    # about 1 run in 10): each is run from several starts and the best lnL is kept.
+    # codeml also draws its other initial values at random in every run.
+    _BETA_MODELS = ('M7', 'M8', 'M8a')
+    DEFAULT_BETA_STARTS = 5
+    # initial ω of the starts after the first, and of a re-optimisation
+    _EXTRA_START_OMEGAS = (0.2, 1.0, 2.5, 0.05, 1.5)
 
-    def _run_model_multistart(self, fas_file: Path, model_name: str, log_file: Path,
-                               warm_start_kappa: float, fitted_tree: str,
-                               aln=None) -> Dict:
-        """Run a model from the warm-start branch lengths and kappa once per initial ω
-        in _WARM_START_OMEGA_TRIALS and keep the best lnL. Every start writes the
-        same files in MODEL/, so the files of the best start are put back after a
-        worse one."""
+    def _n_starts(self, model_name: str) -> int:
+        if model_name not in self._BETA_MODELS:
+            return 1
+        return max(1, int((self.config or {}).get('beta_starts', self.DEFAULT_BETA_STARTS)))
+
+    def _start_omegas(self, model_name: str, warm: bool) -> list:
+        """Initial ω of each start; None is the run's usual initial ω."""
+        omegas = list(self._WARM_START_OMEGA_TRIALS) if warm else [None]
+        extra = itertools.cycle(self._EXTRA_START_OMEGAS)
+        while len(omegas) < self._n_starts(model_name):
+            omegas.append(next(extra))
+        return omegas
+
+    def _model_files(self, fas_file: Path, model_name: str) -> Dict[Path, bytes]:
         out_dir = Path(self.config['output_folder']) / model_name
         safe = re.sub(r'[^\w.\-]+', '_', fas_file.stem)
+        names = set(out_dir.glob(f"{safe}_{model_name}*")) | set(out_dir.glob(f"{fas_file.stem}_{model_name}_*"))
+        return {p: p.read_bytes() for p in names if p.is_file()}
 
-        def _files():
-            names = set(out_dir.glob(f"{safe}_{model_name}*")) | set(out_dir.glob(f"{fas_file.stem}_{model_name}_*"))
-            return {p: p.read_bytes() for p in names if p.is_file()}
+    def _restore_model_files(self, fas_file: Path, model_name: str, saved: Dict[Path, bytes]) -> None:
+        for path in set(self._model_files(fas_file, model_name)) - set(saved):
+            path.unlink(missing_ok=True)
+        for path, data in saved.items():
+            path.write_bytes(data)
 
+    def _run_model_multistart(self, fas_file: Path, model_name: str, log_file: Path,
+                               warm_start_kappa: float = None, fitted_tree: str = None,
+                               aln=None, omegas=None, allow_reuse: bool = True) -> Dict:
+        """Run a model once per initial ω in omegas (default: _start_omegas) and keep
+        the best lnL. Every start writes the same files in MODEL/, so the files of the
+        best start are put back after a worse one. A first start that reuses a saved
+        run returns it: that run was already the best of its starts."""
+        if omegas is None:
+            omegas = self._start_omegas(model_name, warm=fitted_tree is not None)
         best = None
         best_files = {}
         last = None
-        for omega0 in self._WARM_START_OMEGA_TRIALS:
+        lnls = []
+        for k, omega0 in enumerate(omegas):
             r = self._run_single_analysis(
                 fas_file=fas_file, model_name=model_name, log_file=log_file,
                 warm_start_kappa=warm_start_kappa, fitted_tree=fitted_tree,
-                omega_override=omega0, aln=aln,
+                omega_override=omega0, aln=aln, reuse=allow_reuse and k == 0,
             )
             last = r
             if r.get('status') == 'stopped':
                 return r
+            if k == 0 and (r.get('reused') or r.get('status') != 'success'):
+                return r    # a failure of the first start (input, time limit) is not a start problem
+            lnls.append(r.get('lnL'))
             if r.get('lnL') is not None and (best is None or r['lnL'] > best['lnL']):
                 best = r
-                best_files = _files()
+                best_files = self._model_files(fas_file, model_name)
         if best is not None and best is not last and best_files:
-            for path in set(_files()) - set(best_files):
-                path.unlink(missing_ok=True)
-            for path, data in best_files.items():
-                path.write_bytes(data)
-            self._log(f"[{model_name}] {fas_file.stem}: kept the start with the best lnL ({best['lnL']})")
-        return best if best is not None else last
+            self._restore_model_files(fas_file, model_name, best_files)
+        result = best if best is not None else last
+        result['n_starts'] = len(omegas)
+        result['start_lnLs'] = lnls
+        self._log(f"[{model_name}] {fas_file.stem}: {len(omegas)} starts, lnL {lnls}; "
+                  f"kept {result.get('lnL')}")
+        return result
 
+    def _reoptimize_negative_lrts(self, gene: str, fas_file: Path, gene_results: Dict[str, Dict],
+                                  aln, kappa: Optional[float], fitted_tree: Optional[str]) -> None:
+        """2Δℓ < 0 beyond rounding means the alternative missed the optimum of the null
+        it contains: run the alternative again from other initial values and keep it if
+        its lnL is higher. If 2Δℓ is still negative the test is an optimisation failure
+        (LRT_results.txt, genes_status.tsv), never p = 1."""
+        def _stat(null, alt):
+            n, a = gene_results.get(null) or {}, gene_results.get(alt) or {}
+            if 'success' != n.get('status') or 'success' != a.get('status') \
+                    or n.get('lnL') is None or a.get('lnL') is None:
+                return None
+            return 2 * (a['lnL'] - n['lnL'])
+
+        rerun = set()
+        for null, alt in lrt_stats.pairs_for(list(gene_results)):
+            stat = _stat(null, alt)
+            if not lrt_stats.optimization_failed(stat):
+                continue
+            if alt not in rerun:
+                rerun.add(alt)
+                msg = self._t('lrt_negative_rerun', gene=gene, null=null, alt=alt, stat=stat)
+                self._emit('warn', msg)
+                self._log(f"[WARN] {msg}")
+                use_warm = alt in self._SITE_WARMUP and fitted_tree is not None
+                old = gene_results[alt]
+                saved = self._model_files(fas_file, alt)
+                r = self._run_model_multistart(
+                    fas_file, alt, self._log_path,
+                    warm_start_kappa=kappa if alt in self._SITE_WARMUP else None,
+                    fitted_tree=fitted_tree if use_warm else None, aln=aln,
+                    omegas=list(self._EXTRA_START_OMEGAS), allow_reuse=False)
+                if r.get('status') == 'success' and r.get('lnL') is not None and r['lnL'] > old['lnL']:
+                    r['reoptimized'] = True
+                    gene_results[alt] = r
+                    self._log(f"[{alt}] {gene}: re-optimised, lnL {old['lnL']} -> {r['lnL']}")
+                else:
+                    self._restore_model_files(fas_file, alt, saved)
+                stat = _stat(null, alt)
+            if lrt_stats.optimization_failed(stat):
+                msg = self._t('lrt_failed', gene=gene, null=null, alt=alt, stat=stat)
+                self._emit('error', msg)
+                self._log(f"[LRT FAILED] {msg}")
+                self._add_gene_note(gene, self._t('note_lrt_failed', null=null, alt=alt, stat=stat))
 
     @staticmethod
     def _process_cpu_seconds(pid: int) -> Optional[float]:
@@ -1387,13 +1511,30 @@ class CodemlBatchAnalysis:
         except OSError:
             return False
 
+    def _report_cleandata(self, gene: str, names, seqs, n_codons: int) -> None:
+        """Once per gene: how many codon columns cleandata = 1 removes (log, window,
+        genes_status.tsv, methods_text.txt, run_config.json)."""
+        if not hasattr(self, 'cleandata_removed'):
+            self.cleandata_removed = {}
+        with self._results_lock:
+            if gene in self.cleandata_removed:
+                return
+            removed = n_codons - len(cleandata_kept_codons(names, seqs))
+            self.cleandata_removed[gene] = (removed, n_codons)
+        pct = 100 * removed / n_codons if n_codons else 0.0
+        msg = self._t('cleandata_removed', gene=gene, removed=removed, total=n_codons, pct=pct)
+        self._emit('info' if removed else 'debug', msg)
+        self._log(f"[cleandata] {msg}")
+        self._add_gene_note(gene, self._t('note_cleandata', removed=removed, total=n_codons, pct=pct))
+
     def _run_single_analysis(self, fas_file: Path, model_name: str,
                              log_file: Path = None,
                              warm_start_kappa: float = None,
                              fitted_tree: str = None,
                              omega_override: float = None,
                              aln=None,
-                             save_outputs: bool = True) -> Dict:
+                             save_outputs: bool = True,
+                             reuse: bool = True) -> Dict:
         """Run codeml for one gene and model. Returns a dict with status 'success',
         'failed' or 'stopped' (and fail_reason). Inputs and outputs are kept in
         MODEL/ with relative paths, so `cd MODEL && codeml GENE_MODEL.ctl` repeats it."""
@@ -1497,6 +1638,8 @@ class CodemlBatchAnalysis:
                                     exec_start)
 
             seqs_used = {n: aln.seqs[n] for n in names}
+            if int(cfg.get('cleandata', 1)) == 1 and save_outputs:
+                self._report_cleandata(base_name, names, seqs_used, aln.length // 3)
             (temp_dir / seq_filename).write_text(to_fasta(names, seqs_used), encoding='utf-8')
 
             def _newick(tree) -> str:
@@ -1581,7 +1724,7 @@ class CodemlBatchAnalysis:
                     model_name=model_name, kappa=warm_start_kappa, fix_blength=fix_bl)
             (temp_dir / ctl_filename).write_text(ctl_content, encoding='utf-8')
 
-            reused = save_outputs and cfg.get('reuse_results', True) and self._reuse_saved_run(
+            reused = save_outputs and reuse and cfg.get('reuse_results', True) and self._reuse_saved_run(
                 model_output_dir, temp_dir, ctl_filename, seq_filename, tree_filename,
                 output_filename, codeml_outfile, prefix)
             if reused:
@@ -1612,7 +1755,7 @@ class CodemlBatchAnalysis:
                         text = text[:beb_idx].rstrip() + '\n'
                     neb_marker = 'Naive Empirical Bayes (NEB) analysis'
                     neb_idx = text.find(neb_marker)
-                    if neb_idx != -1 and not re.search(r'^\s*\d+\s+[A-Za-z]\s',
+                    if neb_idx != -1 and not re.search(r'^\s*\d+\s+\S\s',
                                                        text[neb_idx + len(neb_marker):], re.MULTILINE):
                         text = text[:neb_idx].rstrip() + '\n'
                     codeml_out.write_text(text, encoding='utf-8')
@@ -1699,6 +1842,12 @@ class CodemlBatchAnalysis:
                 'beb_skipped': beb_was_skipped[0],
                 'excluded_sequences': excluded,
                 'reused': bool(reused),
+                # starting values actually written to the .ctl (run_config.json)
+                'start': {'omega0': 1.0 if model_name in self.NEUTRAL_MODELS else omega_initial,
+                          'kappa': (round(float(warm_start_kappa), 4)
+                                    if warm_start_kappa is not None and 0.1 <= warm_start_kappa <= 20
+                                    else None),
+                          'fix_blength': fix_bl},
             }
 
         except Exception as e:
@@ -1829,8 +1978,11 @@ class CodemlBatchAnalysis:
 
     LRT_METHOD_NOTE = (
         "METHODS NOTE:\n"
-        "  Statistic: 2*(lnL_alternative - lnL_null); negative values (the\n"
-        "  alternative did not improve) are set to 0, giving p = 1.\n"
+        "  Statistic: 2*(lnL_alternative - lnL_null). Values between -0.01 and 0\n"
+        "  (rounding) are set to 0, giving p = 1. A value below -0.01 means the\n"
+        "  alternative missed the optimum of the null it contains: the alternative\n"
+        "  is run again from other starting values, and if 2*dl stays below -0.01\n"
+        "  the test is reported as FAILED, without p-value and outside BH.\n"
         "  df = extra free parameters in the alternative (branch lengths count\n"
         "  equally in both models):\n"
         "    M0  vs M1a  : df = 1\n"
@@ -1849,6 +2001,17 @@ class CodemlBatchAnalysis:
         "  M8a vs M8 does not have this problem (Swanson et al. 2003).\n"
     )
 
+    @staticmethod
+    def _write_optimization_failures(f, null_model: str, alt_model: str, failed: list) -> None:
+        for gene, lnl_null, lnl_alt, raw in failed:
+            f.write(f"Gene: {gene}\n")
+            f.write(f"  lnL {null_model}: {lnl_null:.6f}\n")
+            f.write(f"  lnL {alt_model}: {lnl_alt:.6f}\n")
+            f.write(f"  2Δl = {raw:.6f} < 0 after re-optimisation\n")
+            f.write(f"  Result: FAILED -- optimisation failure: {alt_model} did not reach the "
+                    f"likelihood of {null_model}, which it contains; no p-value (not p = 1)\n")
+            f.write("\n" + "-"*60 + "\n\n")
+
     def _run_lrt_analysis(self):
         """Likelihood ratio tests with Benjamini-Hochberg correction. BH needs every
         p-value of a pair first, so each pair is collected, corrected, then written.
@@ -1861,7 +2024,7 @@ class CodemlBatchAnalysis:
         with open(lrt_file, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\n")
             f.write("LIKELIHOOD RATIO TEST (LRT) RESULTS\n")
-            f.write(f"EasyPAML {__version__}\n")
+            f.write(f"SAGUI {__version__}\n")
             f.write("="*80 + "\n\n")
             f.write(self.LRT_METHOD_NOTE + "\n")
 
@@ -1884,6 +2047,7 @@ class CodemlBatchAnalysis:
                 f.write("="*80 + "\n\n")
 
                 collected = []
+                opt_failed = []
                 for gene_name in sorted(self.results.keys()):
                     gene_results = self.results[gene_name]
                     null_res = gene_results.get(null_model)
@@ -1905,6 +2069,10 @@ class CodemlBatchAnalysis:
                             df = max(1, df - (ntime_alt - ntime_null))
 
                     raw_stat = 2 * (lnL_alt - lnL_null)
+                    if lrt_stats.optimization_failed(raw_stat):
+                        # still negative after _reoptimize_negative_lrts: no p, out of BH
+                        opt_failed.append((gene_name, lnL_null, lnL_alt, raw_stat))
+                        continue
                     lrt_stat = max(0.0, raw_stat)
                     p_value = lrt_stats.p_value(lrt_stat, df, boundary=boundary)
                     p_mix = lrt_stats.p_value_mixture(lrt_stat) if boundary else None
@@ -1931,8 +2099,7 @@ class CodemlBatchAnalysis:
                     f.write(f"  lnL {alt_model}: {c['lnL_alt']:.6f} (np={c['np_alt']})\n")
                     f.write(f"  2Δl = {c['lrt_stat']:.6f}")
                     if c['raw_stat'] < 0:
-                        f.write(f"  (raw {c['raw_stat']:.6f} < 0: the alternative did not reach "
-                                f"the null; consider running it again)")
+                        f.write(f"  (raw {c['raw_stat']:.6f}: rounding of the printed lnL)")
                     f.write("\n")
                     f.write(f"  df = {c['df_display']}\n")
                     f.write(f"  p-value = {c['p_value']:.6e}\n")
@@ -1946,9 +2113,12 @@ class CodemlBatchAnalysis:
                         f.write(f"  Result: not significant (q >= 0.05, BH-corrected)\n")
                     f.write("\n" + "-"*60 + "\n\n")
 
+                self._write_optimization_failures(f, null_model, alt_model, opt_failed)
                 total_valid = len(collected)
                 f.write("\nSUMMARY:\n")
                 f.write(f"  Genes tested: {total_valid}\n")
+                if opt_failed:
+                    f.write(f"  Optimisation failures (no p-value, left out of BH): {len(opt_failed)}\n")
                 if total_valid > 0:
                     f.write(f"  Significant at raw p < 0.05 (before correction, reference only): {sig_count_05} ({100*sig_count_05/total_valid:.1f}%)\n")
                     f.write(f"  Significant at BH q < 0.05: {sig_count_q05} ({100*sig_count_q05/total_valid:.1f}%)\n")
@@ -2154,6 +2324,8 @@ class CodemlBatchAnalysis:
                     continue
                 lrt = 2 * (a_l - n_l)
                 row[lrt_stats.lrt_column(null_m, alt_m)] = lrt
+                if lrt_stats.optimization_failed(lrt):
+                    continue        # no p-value (LRT_results.txt: FAILED)
                 df = info['df'] or 1
                 if info['df'] is None:
                     na, nn = row.get(f'{alt_m}_np'), row.get(f'{null_m}_np')
@@ -2252,7 +2424,7 @@ class CodemlBatchAnalysis:
 
         with open(log_file, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\n")
-            f.write("EASYPAML ANALYSIS LOG (REGENERATED)\n")
+            f.write("SAGUI ANALYSIS LOG (REGENERATED)\n")
             f.write("="*80 + "\n")
             f.write(f"Regenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Results folder: {results_folder}\n")
@@ -2363,7 +2535,7 @@ class CodemlBatchAnalysis:
         with open(lrt_file, 'w', encoding='utf-8') as f:
             f.write("="*80 + "\n")
             f.write("LIKELIHOOD RATIO TEST (LRT) RESULTS (REGENERATED)\n")
-            f.write(f"EasyPAML {__version__}\n")
+            f.write(f"SAGUI {__version__}\n")
             f.write("="*80 + "\n\n")
             f.write(CodemlBatchAnalysis.LRT_METHOD_NOTE + "\n")
             
@@ -2379,6 +2551,7 @@ class CodemlBatchAnalysis:
 
                 # collect every gene before the BH correction
                 collected = []
+                opt_failed = []
                 for gene in sorted(genes):
                     if gene_status.get(gene, ('',))[0] == 'failed':
                         continue   # older folders: output of a stopped codeml
@@ -2424,6 +2597,9 @@ class CodemlBatchAnalysis:
 
                         # boundary tests use χ²₁, as the PAML manual recommends for branch-site
                         is_boundary = lrt_stats.PAIRS[(null_model, alt_model)]['boundary']
+                        if lrt_stats.optimization_failed(lrt_stat):
+                            opt_failed.append((gene, lnL_null, lnL_alt, lrt_stat))
+                            continue
                         lrt_stat = max(0.0, lrt_stat)
                         p_value = lrt_stats.p_value(lrt_stat, gene_df, boundary=is_boundary)
                         p_value_mixture = lrt_stats.p_value_mixture(lrt_stat) if is_boundary else None
@@ -2469,7 +2645,10 @@ class CodemlBatchAnalysis:
 
                     f.write("\n" + "-"*60 + "\n\n")
 
+                CodemlBatchAnalysis._write_optimization_failures(f, null_model, alt_model, opt_failed)
                 total_valid = len(collected)
+                if opt_failed:
+                    f.write(f"\n  Optimisation failures (no p-value, left out of BH): {len(opt_failed)}\n")
                 if total_valid > 0:
                     f.write("\nSUMMARY:\n")
                     f.write(f"  Genes tested: {total_valid}\n")

@@ -48,8 +48,9 @@ class SitesParser:
             sites_text = match.group(1).strip()
             # M2a/M8 site lines, with
             # media posterior de omega +- erro padrao):
-            # "   159 R      0.990**       8.976 +- 1.573"
-            site_pattern = r'\s*(\d+)\s+([A-Z])\s+([\d.]+)([\*]*)\s+([\d.]+)\s*\+-\s*([\d.]+)'
+            # "   159 R      0.990**       8.976 +- 1.573"; the residue of the 1st sequence
+            # may be '-', '?' or '*' with cleandata = 0 ("   134 -      0.960*  ...")
+            site_pattern = r'\s*(\d+)\s+(\S)\s+([\d.]+)([\*]*)\s+([\d.]+)\s*\+-\s*([\d.]+)'
 
             sites = []
             for line in sites_text.split('\n'):
@@ -95,7 +96,7 @@ class SitesParser:
         if not bs_match:
             return pd.DataFrame()
 
-        bs_site_pattern = r'\s*(\d+)\s+([A-Z])\s+([\d.]+)([\*]*)\s*$'
+        bs_site_pattern = r'\s*(\d+)\s+(\S)\s+([\d.]+)([\*]*)\s*$'
         sites = []
         for line in bs_match.group(1).strip().split('\n'):
             if not line.strip():
@@ -131,34 +132,31 @@ class SitesParser:
             
             lines = content.split('\n')
             omegas = []
-            
+
             for i, line in enumerate(lines):
                 if 'dN & dS for each branch' in line:
-                    # Procurar primeira linha de dados (pula headers e linhas vazias)
                     for j in range(i + 1, min(i + 200, len(lines))):
                         data_line = lines[j].strip()
-                        
-                        # Pular linhas vazias e headers
-                        if not data_line or 'branch' in data_line.lower():
+                        if not data_line:
+                            if omegas:
+                                break       # blank line after the rows: end of the table
                             continue
-                        
-                        # Parar se encontrar outro header ou fim de tabela
-                        if any(x in data_line.lower() for x in ['tree length', 'mlc', 'model', '---', 'dS tree', 'dN tree']):
-                            break
-                        
-                        # Tentar extrair dN/dS (5ª coluna, index 4)
+                        parts = data_line.split()
+                        # rows look like "5..6  0.165  231.2  41.8  1.9777 ..."; anything else
+                        # (header, or the NEB table that follows in small trees) is skipped
+                        if '..' not in parts[0] or len(parts) < 5:
+                            if omegas:
+                                break
+                            continue
                         try:
-                            parts = data_line.split()
-                            if len(parts) >= 5:
-                                omega_str = parts[4]
-                                omega = float(omega_str)
-                                
-                                if -10 <= omega <= 100:
-                                    omegas.append(omega)
-                        except (ValueError, IndexError):
-                            pass
+                            omega = float(parts[4])
+                        except ValueError:
+                            continue
+                        # 999 is codeml's dN/dS when dS = 0 and is kept
+                        if 0 <= omega <= 999:
+                            omegas.append(omega)
                     break
-            
+
             if omegas:
                 return float(np.median(omegas))
 
@@ -194,12 +192,12 @@ class SitesParser:
                         
                         try:
                             parts = data_line.split()
-                            if len(parts) >= 5:
+                            if len(parts) >= 5 and '..' in parts[0]:   # not the NEB rows after it
                                 branch = parts[0]  # Exemplo: "19..20", "26..13"
                                 omega_str = parts[4]
                                 omega = float(omega_str)
                                 
-                                if -10 <= omega <= 100:
+                                if 0 <= omega <= 999:   # 999: dS = 0
                                     branch_omegas[branch] = omega
                         except (ValueError, IndexError):
                             pass

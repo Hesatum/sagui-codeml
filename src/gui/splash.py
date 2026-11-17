@@ -16,7 +16,7 @@ def load_with_splash(load):
     w, h = 340, 170
     root.geometry(f"{w}x{h}+{(root.winfo_screenwidth() - w) // 2}+{(root.winfo_screenheight() - h) // 2}")
     root.configure(bg=PALETTE['bg_panel'])
-    tk.Label(root, text="EasyPAML", bg=PALETTE['bg_panel'], fg=PALETTE['text_primary'],
+    tk.Label(root, text="SAGUI", bg=PALETTE['bg_panel'], fg=PALETTE['text_primary'],
              font=(FONT_UI, -FONT_SIZE['xl'], 'bold')).pack(pady=(26, 10))
     spinner = Spinner(root, size=36, bg=PALETTE['bg_panel'])
     spinner.canvas.pack()

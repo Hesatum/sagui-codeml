@@ -27,10 +27,10 @@ examples/results/
 bin/codeml
 
 # launchers written by the installers
-/EasyPAML.sh
-/easypaml-cli.sh
-/EasyPAML.bat
-/easypaml-cli.bat
+/SAGUI.sh
+/sagui-cli.sh
+/SAGUI.bat
+/sagui-cli.bat
 
 # OS and editors
 .DS_Store

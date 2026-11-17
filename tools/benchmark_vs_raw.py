@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Compare EasyPAML with plain codeml on the same genes.
+"""Compare SAGUI with plain codeml on the same genes.
 
-For each alignment, runs EasyPAML for one model, then runs the .ctl that
-EasyPAML saved directly with codeml, and prints both run times and lnL values.
+For each alignment, runs SAGUI for one model, then runs the .ctl that
+SAGUI saved directly with codeml, and prints both run times and lnL values.
 The lnL values should agree up to codeml's random starting values (see METHODS.md).
 
     python tools/benchmark_vs_raw.py --input ALIGNMENTS --tree TREE.nwk --model M8 [--codeml PATH]
@@ -35,12 +35,12 @@ def main():
     ap.add_argument('--input', type=Path, required=True, help='folder with alignments')
     ap.add_argument('--tree', type=Path, required=True)
     ap.add_argument('--model', default='M8')
-    ap.add_argument('--codeml', help='codeml executable (default: same search as EasyPAML)')
+    ap.add_argument('--codeml', help='codeml executable (default: same search as SAGUI)')
     args = ap.parse_args()
     codeml = find_codeml(args.codeml)
 
     genes, _ = group_by_gene(list_alignment_files(args.input))
-    print(f"{'gene':30s} {'easypaml_s':>10s} {'codeml_s':>9s} {'easypaml_lnL':>14s} {'codeml_lnL':>14s}")
+    print(f"{'gene':30s} {'sagui_s':>10s} {'codeml_s':>9s} {'sagui_lnL':>14s} {'codeml_lnL':>14s}")
     for gene, path in sorted(genes.items()):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
@@ -59,7 +59,7 @@ def main():
             ctl = next(model_dir.glob('*.ctl'), None)
             ours = next(model_dir.glob('*_results.txt'), None)
             if ctl is None or ours is None:
-                print(f"{gene:30s} EasyPAML run failed, see {model_dir}")
+                print(f"{gene:30s} SAGUI run failed, see {model_dir}")
                 continue
             raw_dir = tmp / 'raw'
             shutil.copytree(model_dir, raw_dir)

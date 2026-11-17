@@ -34,7 +34,7 @@ TEXTS_PT: dict[str, object] = {
     "tree_labeler_btn_cancel":   "Cancelar",
 
     # ── App (main window) ────────────────────────────────────
-    "app_sidebar_title":    "EasyPAML",
+    "app_sidebar_title":    "SAGUI",
 
 
     "btn_input_folder":  "Pasta de alinhamentos",
@@ -49,7 +49,7 @@ TEXTS_PT: dict[str, object] = {
     "label_timeout_auto":     "auto",
     "label_timeout_hint": (
         "Quanto tempo cada execução do codeml (um gene × um modelo) pode levar.\n\n"
-        "Vazio = automático: o EasyPAML estima o tempo pelo modelo e pelo tamanho\n"
+        "Vazio = automático: o SAGUI estima o tempo pelo modelo e pelo tamanho\n"
         "do gene (táxons × códons) e dá 5 vezes essa estimativa, no mínimo 30 min.\n"
         "Ex.: M8 com 30 táxons × 500 códons ≈ 33 min medidos → limite de 2,7 h.\n\n"
         "Preencha só se quiser um limite fixo (por exemplo, numa máquina muito\n"
@@ -69,7 +69,7 @@ TEXTS_PT: dict[str, object] = {
     "label_cpus": "CPUs (paralelismo):",
     "label_omega_initial_hint": (
         "Valor de partida de ω (dN/dS) para a otimização por máxima verossimilhança\n"
-        "(variável 'omega' do codeml; padrão do EasyPAML: 0,5). Não fixa ω: o codeml\n"
+        "(variável 'omega' do codeml; padrão do SAGUI: 0,5). Não fixa ω: o codeml\n"
         "estima ω a partir dele (exceto nos nulos M8a e branch-site, em que ω = 1).\n\n"
         "O manual do PAML sugere repetir a análise com outros valores iniciais\n"
         "(ex.: 0,5 e 2) e conferir se o lnL chega ao mesmo valor: M7/M8 e\n"
@@ -86,7 +86,7 @@ TEXTS_PT: dict[str, object] = {
         "Fonte: manual do PAML (pamlDOC: 'NSsites' / 'ncatG')."
     ),
     "label_cpus_hint": (
-        "Quantos genes o EasyPAML analisa ao mesmo tempo: um processo codeml\n"
+        "Quantos genes o SAGUI analisa ao mesmo tempo: um processo codeml\n"
         "por gene (o codeml usa um núcleo por processo). Os modelos de um mesmo\n"
         "gene rodam um depois do outro.\n\n"
         "Mais CPUs terminam o lote mais rápido, mas usam mais memória e deixam o\n"
@@ -118,7 +118,7 @@ TEXTS_PT: dict[str, object] = {
     "label_auto_prune_hint": (
         "Para cada gene, tira da árvore os táxons que não estão\n"
         "no alinhamento. Sequências do alinhamento que NÃO estão\n"
-        "na árvore são EXCLUÍDAS da análise; o EasyPAML avisa\n"
+        "na árvore são EXCLUÍDAS da análise; o SAGUI avisa\n"
         "antes de rodar e sugere o nome mais parecido.\n"
         "Desligado: nomes diferentes fazem o codeml falhar."
     ),
@@ -132,7 +132,7 @@ TEXTS_PT: dict[str, object] = {
     "status_paused":  "● Pausada",
     "status_stopped": "● Parada",
     "status_stops_template": "■ Stop codons: {n}",
-    "msg_not_results_folder": "{path} não tem resultados do EasyPAML (analysis_summary.tsv). Escolha a pasta indicada em \u201cPasta de Resultados\u201d quando a análise rodou.",
+    "msg_not_results_folder": "{path} não tem resultados do SAGUI (analysis_summary.tsv). Escolha a pasta indicada em \u201cPasta de Resultados\u201d quando a análise rodou.",
     "label_neutral_models":  "Modelos nulos automáticos",
 
     "btn_run":           "Iniciar",
@@ -145,7 +145,7 @@ TEXTS_PT: dict[str, object] = {
     "log_header_subtitle": "uma mensagem por linha",
 
     "log_welcome": (
-        "EasyPAML: análise de seleção com PAML/codeml\n"
+        "SAGUI: análise de seleção com PAML/codeml\n"
         "1. Escolha a pasta de alinhamentos (.fasta, .fas, .phy, .phylip)\n"
         "2. Escolha o arquivo de árvore (.nwk, .tree, .tre, .txt)\n"
         "3. Escolha (ou crie) a pasta de resultados\n"
@@ -163,11 +163,11 @@ TEXTS_PT: dict[str, object] = {
     "model_info_references":     "Referências:",
 
     # ── ResultsViewerWindow ───────────────────────────────────────
-    "viewer_window_title":       "EasyPAML · Resultados",
+    "viewer_window_title":       "SAGUI · Resultados",
     "viewer_error_no_tsv":       "analysis_summary.tsv não encontrado.",
     "viewer_error_run_analysis": "Execute uma análise para gerar resultados.",
 
-    "viewer_header_title":    "EasyPAML  ·  Resultados",
+    "viewer_header_title":    "SAGUI  ·  Resultados",
     "viewer_header_subtitle": "Análise de seleção  ·  codeml",
     "viewer_btn_recompute": "Recalcular resumos",
 
@@ -260,13 +260,13 @@ TEXTS_PT: dict[str, object] = {
     "log_analysis_start":     "Iniciando a análise…\n",
 
     # ── App file dialogs ────────────────────────────────────────
-    "dialog_select_results_folder": "Escolha uma pasta de resultados do EasyPAML para abrir",
+    "dialog_select_results_folder": "Escolha uma pasta de resultados do SAGUI para abrir",
 
     # ── App — troca de idioma ────────────────────────────────────────────
-    "lang_switch_message":  "O novo idioma é aplicado quando o EasyPAML reabre. As pastas e os modelos escolhidos são mantidos.",
+    "lang_switch_message":  "O novo idioma é aplicado quando o SAGUI reabre. As pastas e os modelos escolhidos são mantidos.",
     "lang_switch_confirm":  "Reabrir agora?",
     "msg_wait_for_run": "Espere a análise terminar (ou pare-a) antes de trocar o idioma ou o tema.",
-    "lang_switch_err":      "Não foi possível reabrir sozinho:\n{error}\n\nAbra o EasyPAML de novo.",
+    "lang_switch_err":      "Não foi possível reabrir sozinho:\n{error}\n\nAbra o SAGUI de novo.",
 
     # ── ResultsViewerWindow — mensagens inline ───────────────────────────
     "viewer_genes_loaded":      "{n} gene(s) carregado(s)",
@@ -309,21 +309,21 @@ TEXTS_PT: dict[str, object] = {
     "btn_yes": "Sim",
     "btn_no": "Não",
     "btn_about": "Sobre",
-    "about_title": "Sobre o EasyPAML",
+    "about_title": "Sobre o SAGUI",
     "about_text": (
-        "EasyPAML {version}\n\n"
+        "SAGUI {version}\n\n"
         "codeml: {codeml}\n"
         "Versão do codeml: {codeml_version}\n"
         "Python: {python}\n"
         "Sistema: {platform}\n\n"
-        "Código e documentação: https://github.com/Hesatum/EasyPAML\n"
+        "Código e documentação: https://github.com/Hesatum/sagui-codeml\n"
         "Métodos (parâmetros do codeml, LRT, correção BH): METHODS.md"
     ),
     "about_codeml_missing": "não encontrado (Linux: sudo apt install paml)",
     "label_codonfreq": "Frequências de códons (CodonFreq):",
     "label_codonfreq_hint": (
         "Modelo de frequências de códons do codeml.\n"
-        "2 = F3x4 é o padrão do EasyPAML. 7 = FMutSel é outro\n"
+        "2 = F3x4 é o padrão do SAGUI. 7 = FMutSel é outro\n"
         "modelo, com mais parâmetros; se usar, diga isso nos métodos."
     ),
     "label_ncatg": "Categorias da beta (ncatG, M7/M8):",
@@ -388,7 +388,7 @@ TEXTS_PT: dict[str, object] = {
     "neutral_window_title": "Modelos nulos e comparações LRT",
     "neutral_header": "Modelos nulos e comparações LRT",
     "neutral_intro": (
-        "Com esta opção ligada, o EasyPAML adiciona o modelo nulo de cada par por você. "
+        "Com esta opção ligada, o SAGUI adiciona o modelo nulo de cada par por você. "
         "Cada comparação usa o teste da razão de verossimilhança "
         "(LRT): 2ΔlnL comparado ao χ² com os graus de liberdade indicados; o p é corrigido "
         "por Benjamini-Hochberg entre os genes (q)."
@@ -446,7 +446,7 @@ TEXTS_PT: dict[str, object] = {
     "theme_system": "Auto",
     "theme_light": "Claro",
     "theme_dark": "Escuro",
-    "theme_restart": "O novo tema é aplicado quando o EasyPAML reabre. As pastas e os modelos escolhidos são mantidos. Reabrir agora?",
+    "theme_restart": "O novo tema é aplicado quando o SAGUI reabre. As pastas e os modelos escolhidos são mantidos. Reabrir agora?",
     "lang_restart_title": "Idioma",
     "viewer_tab_summary": "Resumo",
     "viewer_btn_open_output": "Abrir pasta de resultados",
@@ -474,7 +474,7 @@ TEXTS_PT: dict[str, object] = {
     "label_tree_folder_general": "os outros usam {tree}",
     "pairing_title": "Árvores por gene",
     "pairing_summary": "{paired} de {total} gene(s) pareado(s) · {missing} sem árvore · {orphans} árvore(s) sem gene",
-    "pairing_rules": "Os nomes são comparados sem extensões nem os prefixos do IQ-TREE e do RAxML (.treefile, .nwk, RAxML_bestTree.) e sem diferenciar maiúsculas. Um nome parecido nunca é pareado: renomeie o arquivo para ficar igual ao alinhamento e clique em Conferir de novo. O EasyPAML não renomeia seus arquivos.",
+    "pairing_rules": "Os nomes são comparados sem extensões nem os prefixos do IQ-TREE e do RAxML (.treefile, .nwk, RAxML_bestTree.) e sem diferenciar maiúsculas. Um nome parecido nunca é pareado: renomeie o arquivo para ficar igual ao alinhamento e clique em Conferir de novo. O SAGUI não renomeia seus arquivos.",
     "pairing_branch_note": "Branch e Branch-site: as marcas #1 precisam já estar em cada árvore por gene.",
     "pairing_col_gene": "Gene (alinhamento)",
     "pairing_col_tree": "Arquivo de árvore",
@@ -642,7 +642,7 @@ TEXTS_EN: dict[str, object] = {
     "tree_labeler_btn_cancel":   "Cancel",
 
     # ── Section 3 — App (main window) ───────────────────────────────────────
-    "app_sidebar_title":    "EasyPAML",
+    "app_sidebar_title":    "SAGUI",
 
 
     "btn_input_folder":   "Alignments folder",
@@ -657,7 +657,7 @@ TEXTS_EN: dict[str, object] = {
     "label_timeout_auto":     "auto",
     "label_timeout_hint": (
         "How long each codeml run (one gene × one model) may take.\n\n"
-        "Empty = automatic: EasyPAML estimates the time from the model and the\n"
+        "Empty = automatic: SAGUI estimates the time from the model and the\n"
         "gene size (taxa × codons) and allows 5 times that, at least 30 min.\n"
         "E.g. M8 with 30 taxa × 500 codons ≈ 33 min measured → 2.7 h limit.\n\n"
         "Fill it in only if you want a fixed limit (e.g. on a very slow\n"
@@ -677,7 +677,7 @@ TEXTS_EN: dict[str, object] = {
     "label_cpus": "CPUs (parallelism):",
     "label_omega_initial_hint": (
         "Starting value of ω (dN/dS) for the maximum-likelihood optimisation\n"
-        "(codeml variable 'omega'; EasyPAML default: 0.5). It does not fix ω:\n"
+        "(codeml variable 'omega'; SAGUI default: 0.5). It does not fix ω:\n"
         "codeml estimates ω from it (except in the M8a and branch-site nulls,\n"
         "where ω = 1).\n\n"
         "The PAML manual suggests re-running with other initial values (e.g. 0.5\n"
@@ -695,7 +695,7 @@ TEXTS_EN: dict[str, object] = {
         "Source: PAML manual (pamlDOC: 'NSsites' / 'ncatG')."
     ),
     "label_cpus_hint": (
-        "How many genes EasyPAML analyses at the same time: one codeml process\n"
+        "How many genes SAGUI analyses at the same time: one codeml process\n"
         "per gene (codeml uses one core per process). The models of a gene run\n"
         "one after the other.\n\n"
         "More CPUs finish the batch sooner but use more memory and slow the\n"
@@ -727,7 +727,7 @@ TEXTS_EN: dict[str, object] = {
     "label_auto_prune_hint": (
         "For each gene, removes from the tree the taxa that are\n"
         "not in the alignment. Alignment sequences that are NOT\n"
-        "in the tree are EXCLUDED from the analysis; EasyPAML\n"
+        "in the tree are EXCLUDED from the analysis; SAGUI\n"
         "warns before running and suggests the closest name.\n"
         "Off: mismatched names make codeml fail."
     ),
@@ -741,7 +741,7 @@ TEXTS_EN: dict[str, object] = {
     "status_paused":  "● Paused",
     "status_stopped": "● Stopped",
     "status_stops_template": "■ Stop codons: {n}",
-    "msg_not_results_folder": "{path} has no EasyPAML results (analysis_summary.tsv). Choose the folder given as \u201cOutput folder\u201d when the analysis was run.",
+    "msg_not_results_folder": "{path} has no SAGUI results (analysis_summary.tsv). Choose the folder given as \u201cOutput folder\u201d when the analysis was run.",
     "label_neutral_models":  "Automatic null models",
 
     "btn_run":           "Run",
@@ -754,7 +754,7 @@ TEXTS_EN: dict[str, object] = {
     "log_header_subtitle": "one message per line",
 
     "log_welcome": (
-        "EasyPAML: selection analysis with PAML/codeml\n"
+        "SAGUI: selection analysis with PAML/codeml\n"
         "1. Choose the alignments folder (.fasta, .fas, .phy, .phylip)\n"
         "2. Choose the tree file (.nwk, .tree, .tre, .txt)\n"
         "3. Choose (or create) the results folder\n"
@@ -772,11 +772,11 @@ TEXTS_EN: dict[str, object] = {
     "model_info_references":     "References:",
 
     # ── Section 4 — ResultsViewerWindow ─────────────────────────────────────
-    "viewer_window_title":       "EasyPAML · Results",
+    "viewer_window_title":       "SAGUI · Results",
     "viewer_error_no_tsv":       "analysis_summary.tsv not found.",
     "viewer_error_run_analysis": "Run an analysis to generate results.",
 
-    "viewer_header_title":    "EasyPAML  ·  Results",
+    "viewer_header_title":    "SAGUI  ·  Results",
     "viewer_header_subtitle": "Selection Analysis  ·  codeml",
     "viewer_btn_recompute": "Recompute summaries",
 
@@ -869,13 +869,13 @@ TEXTS_EN: dict[str, object] = {
     "log_analysis_start":     "Starting the analysis…\n",
 
     # ── App — file dialogs ───────────────────────────────────────────────
-    "dialog_select_results_folder": "Choose an EasyPAML results folder to open",
+    "dialog_select_results_folder": "Choose an SAGUI results folder to open",
 
     # ── App — language switch ────────────────────────────────────────────
-    "lang_switch_message":  "The new language is applied when EasyPAML reopens. The folders and models you chose are kept.",
+    "lang_switch_message":  "The new language is applied when SAGUI reopens. The folders and models you chose are kept.",
     "lang_switch_confirm":  "Reopen now?",
     "msg_wait_for_run": "Wait for the analysis to finish (or stop it) before changing the language or theme.",
-    "lang_switch_err":      "Could not reopen by itself:\n{error}\n\nOpen EasyPAML again.",
+    "lang_switch_err":      "Could not reopen by itself:\n{error}\n\nOpen SAGUI again.",
 
     # ── ResultsViewerWindow — inline messages ────────────────────────────
     "viewer_genes_loaded":      "{n} gene(s) loaded",
@@ -918,21 +918,21 @@ TEXTS_EN: dict[str, object] = {
     "btn_yes": "Yes",
     "btn_no": "No",
     "btn_about": "About",
-    "about_title": "About EasyPAML",
+    "about_title": "About SAGUI",
     "about_text": (
-        "EasyPAML {version}\n\n"
+        "SAGUI {version}\n\n"
         "codeml: {codeml}\n"
         "codeml version: {codeml_version}\n"
         "Python: {python}\n"
         "System: {platform}\n\n"
-        "Code and documentation: https://github.com/Hesatum/EasyPAML\n"
+        "Code and documentation: https://github.com/Hesatum/sagui-codeml\n"
         "Methods (codeml parameters, LRT, BH correction): METHODS.md"
     ),
     "about_codeml_missing": "not found (Linux: sudo apt install paml)",
     "label_codonfreq": "Codon frequencies (CodonFreq):",
     "label_codonfreq_hint": (
         "codeml codon frequency model.\n"
-        "2 = F3x4 is EasyPAML's default. 7 = FMutSel is a\n"
+        "2 = F3x4 is SAGUI's default. 7 = FMutSel is a\n"
         "different model with more parameters; if you use it,\n"
         "say so in your methods."
     ),
@@ -997,7 +997,7 @@ TEXTS_EN: dict[str, object] = {
     "neutral_window_title": "Null models and LRT comparisons",
     "neutral_header": "Null models and LRT comparisons",
     "neutral_intro": (
-        "With this option on, EasyPAML adds the null model of each pair for you. "
+        "With this option on, SAGUI adds the null model of each pair for you. "
         "Each comparison uses the likelihood ratio test (LRT): 2ΔlnL "
         "compared to χ² with the degrees of freedom shown; p is Benjamini-Hochberg corrected "
         "across genes (q)."
@@ -1055,7 +1055,7 @@ TEXTS_EN: dict[str, object] = {
     "theme_system": "Auto",
     "theme_light": "Light",
     "theme_dark": "Dark",
-    "theme_restart": "The new theme is applied when EasyPAML reopens. The folders and models you chose are kept. Reopen now?",
+    "theme_restart": "The new theme is applied when SAGUI reopens. The folders and models you chose are kept. Reopen now?",
     "lang_restart_title": "Language",
     "viewer_tab_summary": "Summary",
     "viewer_btn_open_output": "Open results folder",
@@ -1083,7 +1083,7 @@ TEXTS_EN: dict[str, object] = {
     "label_tree_folder_general": "the others use {tree}",
     "pairing_title": "Trees per gene",
     "pairing_summary": "{paired} of {total} gene(s) paired · {missing} without a tree · {orphans} tree(s) without a gene",
-    "pairing_rules": "Names are compared without extensions and the IQ-TREE and RAxML prefixes (.treefile, .nwk, RAxML_bestTree.) and ignoring case. A near name is never paired: rename the file to match the alignment and click Check again. EasyPAML does not rename your files.",
+    "pairing_rules": "Names are compared without extensions and the IQ-TREE and RAxML prefixes (.treefile, .nwk, RAxML_bestTree.) and ignoring case. A near name is never paired: rename the file to match the alignment and click Check again. SAGUI does not rename your files.",
     "pairing_branch_note": "Branch and Branch-site: the #1 labels must already be in each per-gene tree.",
     "pairing_col_gene": "Gene (alignment)",
     "pairing_col_tree": "Tree file",

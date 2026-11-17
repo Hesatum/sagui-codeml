@@ -5,7 +5,7 @@ These measurements set the default time limit for each codeml run
 
 ## How it was measured
 
-codeml 4.9j fitted one model per run, as EasyPAML does, with the default settings
+codeml 4.9j fitted one model per run, as SAGUI does, with the default settings
 (CodonFreq = 2, ncatG = 10, cleandata = 1, initial ω 0.5). The data were simulated
 with `evolverNSsites` from PAML 4.10.10: random trees of 10, 30 and 60 taxa, 150,
 500 and 1500 codons, an M3 model with three classes (proportions 0.6, 0.3, 0.1;

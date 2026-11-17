@@ -30,6 +30,17 @@ PAIRS = {
 POSITIVE_SELECTION_PAIRS = [('M1a', 'M2a'), ('M7', 'M8'), ('M8a', 'M8')]
 
 
+# 2Δℓ between -LRT_NEGATIVE_TOLERANCE and 0 is rounding of the printed lnL and is set to
+# 0 (p = 1); below it the alternative missed the optimum of the null it contains, which
+# is an optimisation failure, not evidence (METHODS.md, "Likelihood ratio tests")
+LRT_NEGATIVE_TOLERANCE = 0.01
+
+
+def optimization_failed(lrt: Optional[float]) -> bool:
+    """True when 2Δℓ is negative beyond rounding: no p-value can be given."""
+    return lrt is not None and np.isfinite(lrt) and lrt < -LRT_NEGATIVE_TOLERANCE
+
+
 def pairs_for(models: Sequence[str]):
     present = set(models)
     return [p for p in PAIRS if p[0] in present and p[1] in present]

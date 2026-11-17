@@ -17,9 +17,9 @@ MESSAGES = {
     },
     'no_codeml': {
         'pt': "codeml não encontrado. Linux: sudo apt install paml · Windows: bin\\codeml.exe · "
-              "ou defina EASYPAML_CODEML com o caminho do executável.",
+              "ou defina SAGUI_CODEML com o caminho do executável.",
         'en': "codeml not found. Linux: sudo apt install paml · Windows: bin\\codeml.exe · "
-              "or set EASYPAML_CODEML to the executable path.",
+              "or set SAGUI_CODEML to the executable path.",
     },
     'duplicate_ignored': {
         'pt': "{ignored} ignorado: é o mesmo gene que {used}.",
@@ -74,9 +74,9 @@ MESSAGES = {
         'en': "{gene}: {count} tree taxon/taxa absent from this gene were pruned.",
     },
     'warn_sitemap': {
-        'pt': "AVISO: {gene} · {model}: o codeml analisou {codeml} códons e o EasyPAML esperava {expected}; "
+        'pt': "AVISO: {gene} · {model}: o codeml analisou {codeml} códons e o SAGUI esperava {expected}; "
               "a numeração original dos sítios não será mostrada.",
-        'en': "WARNING: {gene} · {model}: codeml analysed {codeml} codons but EasyPAML expected {expected}; "
+        'en': "WARNING: {gene} · {model}: codeml analysed {codeml} codons but SAGUI expected {expected}; "
               "original site numbering will not be shown.",
     },
     'reason_timeout': {
@@ -170,6 +170,32 @@ MESSAGES = {
     'summary_failed_item': {
         'pt': "  • {gene}: {reason}",
         'en': "  • {gene}: {reason}",
+    },
+    'cleandata_removed': {
+        'pt': "{gene}: cleandata = 1 removeu {removed} de {total} colunas de códons ({pct:.1f}%) "
+              "com gap, ambiguidade ou stop.",
+        'en': "{gene}: cleandata = 1 removed {removed} of {total} codon columns ({pct:.1f}%) "
+              "with gaps, ambiguities or stop codons.",
+    },
+    'note_cleandata': {
+        'pt': "cleandata = 1: {removed} de {total} colunas de códons removidas ({pct:.1f}%)",
+        'en': "cleandata = 1: {removed} of {total} codon columns removed ({pct:.1f}%)",
+    },
+    'lrt_negative_rerun': {
+        'pt': "AVISO: {gene}: 2Δℓ {alt} vs {null} = {stat:.4f} < 0 ({alt} não alcançou o {null}); "
+              "reotimizando o {alt} com outros valores iniciais.",
+        'en': "WARNING: {gene}: 2Δℓ {alt} vs {null} = {stat:.4f} < 0 ({alt} did not reach {null}); "
+              "re-optimising {alt} from other starting values.",
+    },
+    'lrt_failed': {
+        'pt': "ERRO: {gene}: 2Δℓ {alt} vs {null} continua negativo ({stat:.4f}) após reotimizar; "
+              "o teste foi marcado como falha de otimização (sem p).",
+        'en': "ERROR: {gene}: 2Δℓ {alt} vs {null} is still negative ({stat:.4f}) after "
+              "re-optimisation; the test is marked as an optimisation failure (no p-value).",
+    },
+    'note_lrt_failed': {
+        'pt': "{alt} vs {null}: falha de otimização (2Δℓ = {stat:.4f} < 0 após reotimizar), sem p",
+        'en': "{alt} vs {null}: optimisation failure (2Δℓ = {stat:.4f} < 0 after re-optimisation), no p-value",
     },
     'results_in': {
         'pt': "Resultados em: {path}",

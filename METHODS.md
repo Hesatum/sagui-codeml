@@ -1,6 +1,6 @@
-# EasyPAML methods
+# SAGUI methods
 
-What EasyPAML does to the data, for writing a methods section or reviewing a
+What SAGUI does to the data, for writing a methods section or reviewing a
 manuscript that used it. Installation, usage and the list of output files are in
 the [README](README.md). Every run records its own settings in `run_config.json`,
 in the `.ctl` of each gene and model, and in `LRT_results.txt`. This describes
@@ -24,7 +24,7 @@ models (`#1`, `#2` …) are set in the "Label branches" window, or come from a p
 tree that has them (`Name#1` or `Name #1`); site models get the tree without labels.
 
 codeml is searched in this order: `--codeml` or the setting in the window, the
-`EASYPAML_CODEML` variable, `bin/codeml(.exe)`, then `PATH`.
+`SAGUI_CODEML` variable, `bin/codeml(.exe)`, then `PATH`.
 
 ## Checks before running
 
@@ -81,8 +81,8 @@ Some starting values are set by codeml itself (`codeml.c`, PAML 4.10.10):
   value between 2 and 3, and codeml prints `initial w for M8:NSbetaw>1 reset.`
 - In M7, M8 and M8a, the beta parameters start from random values (p between 0.2
   and 1.2, q between 1 and 2; p₀ starts at 0.9). Two runs of the same `.ctl` can
-  therefore differ in the third or fourth decimal of lnL. Genes with 2Δℓ close to
-  the significance threshold are worth running again.
+  therefore stop at different optima. SAGUI runs each of these models
+  `--beta-starts` times (5 by default; "Multiple starts" below).
 - With `fix_blength = 0` codeml ignores the input branch lengths. The tree file
   written for codeml keeps the lengths it was given and adds none.
 
@@ -102,15 +102,33 @@ A gene fails if any requested model exits with an error, writes no output, repor
 no lnL, or is stopped by a limit. The partial output of a failed run is kept as
 `*_results_FAILED.txt` and does not enter any test.
 
+### Multiple starts (M7, M8, M8a)
+
+M7, M8 and M8a are each run `--beta-starts` times (default 5; 1 gives a single
+run), and the run with the highest lnL is kept with its files. Each start is a
+separate codeml run, so codeml draws new random starting values for the beta
+parameters; the starts after the first also change the initial ω (0.2, 1.0, 2.5,
+0.05, 1.5), which M8 uses. Starts are not fully independent: with HIV *env* (13 taxa),
+a single run of M7 reached the best lnL in about 1 run in 5 to 1 in 10 and changing
+the initial κ or ω did not help, and 3 of 6 runs with 5 starts reached it. The lnL of
+every start is listed in the log and in `run_config.json` (`starts_by_gene`). If the
+first start fails (error, time limit), the model is not run again.
+
 When the output folder already holds a finished run whose `.ctl`, alignment and
 tree are byte-for-byte the ones about to be used, codeml is not run again and that
 output is reused; the log says so. `--rerun-all` runs everything again.
 
 ## Likelihood ratio tests
 
-2Δℓ = 2(lnL_alternative − lnL_null). A negative value (the alternative did not
-reach the null during optimization) is set to 0, giving p = 1, and is flagged in
-`LRT_results.txt`.
+2Δℓ = 2(lnL_alternative − lnL_null). The alternative contains the null, so at
+their optima 2Δℓ ≥ 0. A value between −0.01 and 0 is rounding of the printed lnL
+and is set to 0 (p = 1). A value below −0.01 means the alternative stopped below
+the optimum of the null: the alternative is run again from five other initial ω
+(0.2, 1.0, 2.5, 0.05, 1.5, each with new random starting values) and kept if its
+lnL is higher. If 2Δℓ is still below −0.01, the test is an optimization failure:
+`LRT_results.txt` marks it FAILED, it has no p- or q-value in `analysis_summary.tsv`,
+it is left out of the Benjamini-Hochberg correction of that test, and
+`genes_status.tsv` notes it. It is never reported as p = 1.
 
 | Test | df | Null distribution |
 |---|---|---|
@@ -123,7 +141,7 @@ reach the null during optimization) is set to 0, giving p = 1, and is flagged in
 
 (*) The null lies on the boundary of the parameter space (ω = 1 fixed, or p₀ = 1 for
 M0 vs M1a), so the asymptotic distribution is a 50:50 mixture of χ²₀ and χ²₁ (Self
-& Liang 1987). EasyPAML uses χ²₁, which is conservative, as the PAML manual
+& Liang 1987). SAGUI uses χ²₁, which is conservative, as the PAML manual
 recommends for the branch-site test; the mixture p-value is printed in
 `LRT_results.txt` for reference.
 
@@ -146,15 +164,24 @@ Sites come from the Bayes Empirical Bayes section (BEB; Yang, Wong & Nielsen
 2005) of M2a, M8 and Branch-site, or from NEB when there is no BEB. `*` marks
 Pr(ω>1) ≥ 0.95 and `**` ≥ 0.99, as in codeml.
 
-With `cleandata = 1` codeml numbers sites after removing columns. EasyPAML
+With `cleandata = 1` codeml numbers sites after removing columns. SAGUI
 applies the same rule (a column is removed if any sequence has something other
 than A, C, G, T there, or a stop codon), checks the result against the number of
 sites codeml reports (`ls` in its output), and writes `GENE_MODEL_sitemap.json`.
 Tables show both the alignment position and the codeml position. If the check
-fails, only the codeml position is shown, with a warning.
+fails, only the codeml position is shown, with a warning. The number of codon
+columns removed is written to the log, to `genes_status.tsv`, to `methods_text.txt`
+(total over the run, and the range per gene) and to `run_config.json`
+(`cleandata_removed_codons`).
+
+A site is listed whatever the residue of the first sequence at that position
+(with `cleandata = 0` it can be `-`, `?` or `*`).
 
 "ω and p₁ of the positive class" are the last class of the "MLEs of dN/dS (w) for
 site classes" table of M2a or M8. The gene's mean ω is not used as a criterion.
+The ω column of `analysis_summary.tsv` is the dN/dS of the "dN & dS for each branch"
+table (for M1a, M2a, M7, M8 and M8a, the mean over site classes); 999 is codeml's
+value when dS = 0 and is kept.
 
 ## Options for many genes
 
@@ -169,7 +196,9 @@ Warm start (`--warm-start-m0`, or "Start from M0" in the advanced settings) is o
 default: every model is fitted from scratch, also when M0 is selected. When it is on,
 M0 is fitted first for each gene (also when it is not selected) and its κ and branch
 lengths are the starting values of the other models (`fix_blength = 1`); each model is
-fitted from initial ω 0.2, 1.0 and 2.5 and the best lnL is kept. Results are not
+fitted from initial ω 0.2, 1.0 and 2.5 (M7, M8 and M8a: more starts up to
+`--beta-starts`) and the best lnL is kept. The κ, `fix_blength` and initial ω of the
+kept start of each gene and model are in `run_config.json` (`starts_by_gene`). Results are not
 guaranteed to match a fit from scratch. `methods_text.txt` says when it was used.
 
 ## Evidence column in the results panel
@@ -178,11 +207,14 @@ Each gene gets one entry in "Evidence (all tests)" from its positive-selection t
 
 | Evidence | When |
 |---|---|
-| Supported | M8 vs M8a or M2a vs M1a significant, with at least one BEB site at Pr(ω>1) ≥ 0.95 |
-| Weak signal | a test significant but no site at Pr(ω>1) ≥ 0.95 |
+| Supported | M8 vs M8a significant with at least one M8 BEB site at Pr(ω>1) ≥ 0.95, or M2a vs M1a significant with at least one M2a BEB site at Pr(ω>1) ≥ 0.95 |
 | Not confirmed by M8a | M8 vs M7 significant but M8 vs M8a not (and M2a vs M1a not) |
-| Possible (no M8a) | M8 vs M7 significant and M8a not run |
+| Possible (no M8a) | M8 vs M7 significant and M8a not run (and M2a vs M1a not) |
+| Weak signal | a test significant, but none of the above (M8 sites do not count through M8 vs M7) |
 | Not detected | no test significant; this is not evidence that the gene is free of selection |
+
+The rows are checked from the top. A test marked as an optimization failure counts
+as not run.
 
 "Copy significant genes" copies the genes marked "Supported" for the selected
 site test, or the genes significant in the selected branch or branch-site test.
@@ -190,9 +222,9 @@ site test, or the genes significant in the selected branch or branch-site test.
 ## Citing
 
 Each run writes `methods_text.txt`: a methods paragraph filled in with that run's
-EasyPAML version and commit, codeml version, models, parameters, tests with df,
+SAGUI version and commit, codeml version, models, parameters, tests with df,
 and the number of genes in each BH correction. The commit is also shown under
-About, by `easypaml-cli.sh --version`, and in `run_config.json` (`easypaml_commit`).
+About, by `sagui-cli.sh --version`, and in `run_config.json` (`sagui_commit`).
 
 ## References
 

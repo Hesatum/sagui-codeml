@@ -61,7 +61,7 @@ def read_sitemap(results_file) -> Optional[Dict]:
 
 def codeml_site_count(results_file) -> Optional[int]:
     """Number of sites (codons) codeml analysed: 'ls' in the 'ns = 10  ls = 299'
-    header of its output. Used to check the map computed by EasyPAML."""
+    header of its output. Used to check the map computed by SAGUI."""
     try:
         text = Path(results_file).read_text(encoding="utf-8", errors="ignore")
     except OSError:

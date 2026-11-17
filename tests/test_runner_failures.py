@@ -27,7 +27,7 @@ ctl = open(sys.argv[1]).read()
 out = re.search(r'outfile\s*=\s*(\S+)', ctl).group(1)
 mode = os.environ.get('FAKE_CODEML_MODE', 'ok')
 print("CODONML (in paml version 9.9fake)", flush=True)
-if sys.argv[1] == 'p.ctl':     # EasyPAML's version probe
+if sys.argv[1] == 'p.ctl':     # SAGUI's version probe
     sys.exit(0)
 def write_ok():
     with open(out, 'w') as f:
@@ -95,6 +95,7 @@ def _app(tmp_path, codeml, models=('M7', 'M8'), **extra):
         'input_folder': inp, 'tree_file': DATA / 'gene_example.nwk',
         'output_folder': tmp_path / 'out', 'models': list(models), 'n_workers': 1,
         'run_lrt': True, 'codeml_path': codeml, 'timeout': 30, 'idle_timeout': 3,
+        'beta_starts': 1,      # one codeml per model; the starts are tested in test_validation_fixes
         'log_callback': lambda level, text: app._test_log.append((level, text)),
     }
     app._test_log = []
@@ -345,7 +346,7 @@ def test_ignore_stop_codons_runs_and_warns_about_excluded_taxon(tmp_path, fake_c
     assert gene_line[1] == 'ok' and 'stop codon' in gene_line[3] and 'Macaca_mulata' in gene_line[3]
 
 
-@pytest.mark.skipif(real_codeml() is None, reason="set EASYPAML_TEST_CODEML to run with a real codeml")
+@pytest.mark.skipif(real_codeml() is None, reason="set SAGUI_TEST_CODEML to run with a real codeml")
 def test_real_codeml_problematic_data_never_hangs(tmp_path):
     app = _app(tmp_path, real_codeml(), models=('M7',))
     app.config['ignore_stop_codons'] = True
@@ -478,6 +479,7 @@ def test_m0_warm_start_only_when_asked(tmp_path, fake_codeml, monkeypatch, warm)
     monkeypatch.setenv('FAKE_CODEML_MODE', 'ok')
     app = _app(tmp_path, fake_codeml, models=('M0', 'M8'))
     app.config['warm_start_m0'] = warm
+    app.config['beta_starts'] = 1      # only the warm start makes several starts here
     tree = (DATA / 'gene_example.nwk').read_text().strip()
     monkeypatch.setattr(app, '_extract_fitted_tree', lambda path: tree)
     monkeypatch.setattr(app, '_extract_kappa', lambda path: 2.5)
@@ -515,18 +517,18 @@ def test_progress_moves_during_a_model_and_heartbeat_prints_it(tmp_path, fake_co
                                              (['--no-m8a'], {'M7', 'M8'}),
                                              (['--no-auto-nulls'], {'M8'})])
 def test_cli_adds_null_models_like_the_window(tmp_path, fake_codeml, monkeypatch, capsys, extra, expected):
-    from src import easypaml_cli
+    from src import sagui_cli
     monkeypatch.setenv('FAKE_CODEML_MODE', 'ok')
     inp = tmp_path / 'in'
     inp.mkdir()
     (inp / 'gene.fasta').write_text((DATA / 'gene_example.fasta').read_text())
     out = tmp_path / 'out'
-    monkeypatch.setattr(sys, 'argv', ['easypaml_cli.py', '--input', str(inp), '--tree',
+    monkeypatch.setattr(sys, 'argv', ['sagui_cli.py', '--input', str(inp), '--tree',
                                       str(DATA / 'gene_example.nwk'), '--output', str(out),
                                       '--models', 'M8', '--codeml', fake_codeml, '--workers', '1',
                                       '--lang', 'en'] + extra)
     with pytest.raises(SystemExit):
-        easypaml_cli.main()
+        sagui_cli.main()
     assert {p.name for p in out.iterdir() if p.is_dir()} == expected
     said = capsys.readouterr().out
     assert ('use --no-auto-nulls' in said) == (expected != {'M8'})

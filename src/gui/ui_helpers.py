@@ -129,7 +129,7 @@ LIGHT_PALETTE = {
 # Active palette, filled by apply_theme() before any window is built.
 PALETTE: dict = {}
 THEME_CHOICES = ('system', 'light', 'dark')
-_THEME_PREF = Path.home() / '.easypaml_theme'
+_THEME_PREF = Path.home() / '.sagui_theme'
 CURRENT_THEME = {'choice': 'system', 'mode': 'dark'}
 
 
@@ -236,7 +236,7 @@ def open_folder(path, parent=None) -> bool:
             parent.clipboard_append(path)
         except Exception:
             pass
-        show_message(parent, "EasyPAML", TEXTS["msg_open_folder_failed"].format(path=path), 'warning')
+        show_message(parent, "SAGUI", TEXTS["msg_open_folder_failed"].format(path=path), 'warning')
 
     try:
         if _ON_WIN:

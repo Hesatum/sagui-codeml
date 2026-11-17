@@ -12,7 +12,7 @@ def _text(models, sizes):
 
 def test_methods_text_has_versions_tests_and_family_sizes():
     t = _text(['M7', 'M8', 'M8a'], {('M7', 'M8'): 3, ('M8a', 'M8'): 3})
-    assert 'EasyPAML 0.3.0.dev0 (commit abc1234; https://github.com/Hesatum/EasyPAML)' in t and 'PAML 4.9j' in t
+    assert 'SAGUI 0.3.0.dev0 (commit abc1234; https://github.com/Hesatum/sagui-codeml)' in t and 'PAML 4.9j' in t
     assert 'F3x4 (CodonFreq = 2)' in t and 'ncatG = 10' in t and 'cleandata = 1' in t
     assert 'M8 vs M7 (df = 2; 3 gene(s))' in t
     assert 'M8 vs M8a (df = 1, χ²₁' in t
