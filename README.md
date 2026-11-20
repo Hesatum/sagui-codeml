@@ -23,6 +23,9 @@ tests a result needs, and explains the answer in plain terms.
 - **Does ω change along some lineages?** Use the Branch model. Label the lineages of
   interest in the tree (#1, #2…); each group gets its own ω, compared with a single ω
   for the whole tree (M0). A different ω alone does not mean positive selection.
+  In the "Label branches" window, one click on a node labels the branch that leads
+  to it (the ancestral lineage of the group), a second click the whole clade and a
+  third removes the label; the coloured branches are the ones codeml tests.
 - **Are some codons under positive selection only on certain lineages?** Use the
   Branch-site model. Label those lineages as the foreground (#1); SAGUI runs the
   test with its null and lists the codons.

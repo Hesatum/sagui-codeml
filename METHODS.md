@@ -23,6 +23,17 @@ and ignoring case; near names are reported, never paired. The pairs are listed i
 models (`#1`, `#2` …) are set in the "Label branches" window, or come from a per-gene
 tree that has them (`Name#1` or `Name #1`); site models get the tree without labels.
 
+In the window a click on a tip labels the branch to that tip. A click on an internal
+node labels only the branch leading to that node (its ancestral branch, `(A,B) #1`);
+a second click labels the whole clade, that branch and every branch inside it, which
+is codeml's `(A,B) $1` written as `(A #1,B #1) #1`; a third click removes the label.
+Labels nearer the tips take precedence, as in codeml. The window colours exactly the
+branches written to the tree, and `run_config.json` (`labelled_trees`) and
+`methods_text.txt` say in words which branches each label covers. Labels already in
+the tree file are kept and shown. With the lysozyme data of the PAML examples (Branch
+model, hominoid clade), the whole-clade label gives the same lnL as `$1`
+(−905.898015), and the ancestral branch gives −903.076551.
+
 codeml is searched in this order: `--codeml` or the setting in the window, the
 `SAGUI_CODEML` variable, `bin/codeml(.exe)`, then `PATH`.
 

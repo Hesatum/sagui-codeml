@@ -4,6 +4,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **Changes results of Branch and Branch-site runs labelled in the window.** A click on
+  an internal node wrote `#1` only on the tips of the clade, so its ancestral branch
+  and inner branches stayed background while the window coloured the whole clade.
+  Now the first click labels the ancestral branch of the node, the second the whole
+  clade (as codeml's `$1`) and the third removes the label; the window colours exactly
+  the labelled branches and says in words which branches each label covers, as do
+  `run_config.json` (`labelled_trees`) and `methods_text.txt`. Labels already in the
+  tree file are shown in the window. Trees labelled by hand and per-gene trees with
+  their own labels are not affected. Runs labelled in the window before should be run
+  again.
 - EasyPAML is now SAGUI, at https://github.com/Hesatum/sagui-codeml. The launchers
   are `SAGUI.sh`/`SAGUI.bat` and `sagui-cli.sh`/`sagui-cli.bat`, the Python entry
   points `src/sagui_window.py` and `src/sagui_cli.py`, and the codeml variable

@@ -18,15 +18,18 @@ TEXTS_PT: dict[str, object] = {
     "tree_labeler_sidebar_title": "Instruções",
 
     "tree_labeler_instructions_branchsite": (
-        "• Clique nos círculos\n  para marcar/desmarcar\n  foreground (#1).\n\n"
-        "• O modo branch-site só permite uma tag #1\n.\n\n"
-        "• Cor: Vermelho"
+        "• Clique num círculo para marcar o foreground (#1).\n\n"
+        "• Num nó interno, cada clique muda a marcação: o 1º marca só o ramo ancestral "
+        "do grupo, o 2º o clado inteiro (quadrado) e o 3º desmarca.\n\n"
+        "• Os ramos coloridos são exatamente os que o codeml vai testar."
     ),
     "tree_labeler_instructions_branch": (
-        "• Clique nos círculos\n  para atribuir tags e testar o ômega dos ramos.\n\n"
-        "• Digite número\n  da tag (1, 2, 3...).\n\n"
-        "• Cada número\n  recebe cor única."
+        "• Clique num círculo e digite o número da marca (1, 2, 3...). Cada número tem sua cor.\n\n"
+        "• Num nó interno, o 1º clique marca só o ramo ancestral do grupo, o 2º o clado "
+        "inteiro (quadrado) e o 3º desmarca.\n\n"
+        "• Os ramos coloridos são exatamente os que o codeml vai testar."
     ),
+    "tree_labeler_root": "A raiz não tem ramo para marcar: clique num nó abaixo dela.",
 
     "tree_labeler_legend_title": "Marcas ativas",
     "tree_labeler_no_tags":      "Nenhuma tag ativa",
@@ -245,8 +248,6 @@ TEXTS_PT: dict[str, object] = {
     "tree_err_load":          "Erro ao carregar a árvore:\n{error}",
 
     # ── TreeLabelWindow dialogs ────────────────────────────────
-    "tag_dialog_edit_title":  "Editar marca",
-    "tag_dialog_edit_prompt": "Ramo atual: {tag}\n\nDigite novo número ou 'remover':",
     "tag_dialog_new_title":   "Número da marca",
     "tag_dialog_new_prompt":  "Digite o número da tag:\n(ex: 1 para #1, 2 para #2)",
 
@@ -626,15 +627,18 @@ TEXTS_EN: dict[str, object] = {
     "tree_labeler_sidebar_title": "Instructions",
 
     "tree_labeler_instructions_branchsite": (
-        "• Click on circles\n  to mark/unmark\n  foreground (#1).\n\n"
-        "• Branch-site mode allows only one #1 tag.\n\n"
-        "• Color: Red"
+        "• Click a circle to label the foreground (#1).\n\n"
+        "• On an internal node each click changes the label: the 1st labels only the "
+        "ancestral branch of the group, the 2nd the whole clade (square), the 3rd removes it.\n\n"
+        "• The coloured branches are exactly the ones codeml will test."
     ),
     "tree_labeler_instructions_branch": (
-        "• Click on circles\n  to assign tags and test branch ω.\n\n"
-        "• Type the tag number\n  (1, 2, 3...).\n\n"
-        "• Each number\n  receives a unique color."
+        "• Click a circle and type the label number (1, 2, 3...). Each number has its own colour.\n\n"
+        "• On an internal node the 1st click labels only the ancestral branch of the group, "
+        "the 2nd the whole clade (square), the 3rd removes it.\n\n"
+        "• The coloured branches are exactly the ones codeml will test."
     ),
+    "tree_labeler_root": "The root has no branch to label: click a node below it.",
 
     "tree_labeler_legend_title": "Active tags",
     "tree_labeler_no_tags":      "No active tags",
@@ -854,8 +858,6 @@ TEXTS_EN: dict[str, object] = {
     "tree_err_load":          "Failed to load the tree:\n{error}",
 
     # ── TreeLabelWindow — tag dialogs ────────────────────────────────────
-    "tag_dialog_edit_title":  "Edit label",
-    "tag_dialog_edit_prompt": "Current branch: {tag}\n\nEnter new number or 'remove':",
     "tag_dialog_new_title":   "Label number",
     "tag_dialog_new_prompt":  "Enter tag number:\n(e.g. 1 for #1, 2 for #2)",
 

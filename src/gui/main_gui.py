@@ -22,6 +22,7 @@ _FONT_MONO = "Cascadia Code" if _ON_WIN else "DejaVu Sans Mono"
 
 from backend.codeml_backend import CodemlBatchAnalysis
 from backend import messages as backend_messages
+from backend import branch_labels
 from backend.ctl_params import (CODONFREQ_OPTIONS, DEFAULT_CODONFREQ, DEFAULT_CTL_PARAMS,
                                 build_ctl_text, codonfreq_label, parse_codonfreq_label)
 from backend.lrt_stats import pairs_for as lrt_pairs_for
@@ -231,10 +232,9 @@ class TreeLabelWindow(ctk.CTkToplevel):
         self.grab_set()
         
         self.tree_path = tree_path
-        self.clade_tags = {}
         self.clade_positions = {}
         self.scatter_objects = []
-        self.marked_clades = {}
+        self.marks = {}       # clade -> (label number, branch_labels.STEM or CLADE)
         
         if Phylo is None:
             ctk.CTkLabel(self, text=TEXTS["tree_err_no_biopython"],
@@ -288,7 +288,14 @@ class TreeLabelWindow(ctk.CTkToplevel):
             return
 
         try:
-            self.tree = Phylo.read(str(self.tree_path), 'newick')
+            parsed = branch_labels.read_labels(Path(self.tree_path).read_text(encoding='utf-8', errors='ignore'))
+            if parsed is None:
+                raise ValueError(tr("árvore Newick inválida", "invalid Newick tree"))
+            # labels already in the file become one mark per labelled branch
+            self.tree, file_labels = parsed
+            for clade in self.tree.find_clades():
+                clade.name = re.sub(r'\s*[#$]\d+\s*$', '', clade.name or '') or None
+            self.marks = {c: (n, branch_labels.STEM) for c, n in file_labels.items()}
         except Exception as e:
             ctk.CTkLabel(plot_frame, text=TEXTS["tree_err_load"].format(error=e), font=(_FONT_UI, FONT_SIZE['sm']),
                          text_color=PALETTE['danger_text']).pack(pady=48)
@@ -358,386 +365,203 @@ class TreeLabelWindow(ctk.CTkToplevel):
 
             self.clade_positions[clade] = (x, y)
 
+    def _labels(self) -> dict:
+        """Label number of every branch, keyed by the clade the branch leads to."""
+        return branch_labels.effective_labels(self.tree, self.marks)
+
     def _draw_tree(self):
-        """Draw the cladogram, colouring from each labelled node down to its tips; a
-        labelled descendant overrides its ancestor."""
+        """Draw the cladogram colouring exactly the branches that codeml will get as
+        labelled: each branch is the vertical piece from its parent plus the
+        horizontal line to its node."""
         self.ax.clear()
         self.ax.set_facecolor(self.BG_DARK)
-        
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         for spine in self.ax.spines.values():
             spine.set_visible(False)
-        
         self.scatter_objects.clear()
+        labels = self._labels()
 
-        def get_tag_for_branch(clade):
-            """Label that colours this clade: its own, else the nearest labelled ancestor,
-            else None."""
-            if clade in self.marked_clades:
-                return self.marked_clades[clade]
-            
-            try:
-                closest_tag = None
-                min_distance = float('inf')
-                
-                for marked_clade, tag in self.marked_clades.items():
-                    try:
-                        all_descendants = list(marked_clade.find_clades())
-                        if clade in all_descendants:
-                            distance = len(all_descendants) - len(list(clade.find_clades()))
-                            if distance < min_distance:
-                                min_distance = distance
-                                closest_tag = tag
-                    except Exception:
-                        pass
-
-                return closest_tag
-            except Exception:
-                pass
-            
-            return None
-
-        def is_descendant_of_marked(clade):
-            """True if this clade descends from a labelled node."""
-            tag = get_tag_for_branch(clade)
-            return (tag is not None, tag)
+        def _style(clade):
+            num = labels.get(clade)
+            if num is None:
+                return PALETTE['canvas_line'], 1.2, 0.7, 1
+            return self._get_tag_color(f"#{num}"), 2.8, 1.0, 3
 
         for clade in self.tree.find_clades():
-            if clade.is_terminal():
+            if clade.is_terminal() or clade not in self.clade_positions:
                 continue
-            
-            if clade not in self.clade_positions:
-                continue
-            
             x_parent, y_parent = self.clade_positions[clade]
-            
-            children_positions = []
             for child in clade.clades:
-                if child in self.clade_positions:
-                    children_positions.append((child, self.clade_positions[child]))
-            
-            if not children_positions:
-                continue
-            
-            child_ys = [pos[1] for _, pos in children_positions]
-            y_min = min(child_ys)
-            y_max = max(child_ys)
-            
-            parent_tag = get_tag_for_branch(clade)
-            
-            if parent_tag:
-                vertical_color = self._get_tag_color(parent_tag)
-                vertical_width = 2.8
-                vertical_alpha = 1.0
-            else:
-                vertical_color = PALETTE['canvas_line']
-                vertical_width = 1.2
-                vertical_alpha = 0.7
-            
-            if abs(y_max - y_min) > 0.01:
-                self.ax.plot([x_parent, x_parent], [y_min, y_max],
-                           color=vertical_color, linewidth=vertical_width, 
-                           zorder=1, alpha=vertical_alpha, solid_capstyle='round')
-            
-            for child, (x_child, y_child) in children_positions:
-                branch_tag = get_tag_for_branch(child)
-                
-                if branch_tag:
-                    branch_color = self._get_tag_color(branch_tag)
-                    branch_width = 2.8
-                    branch_alpha = 1.0
-                else:
-                    branch_color = PALETTE['canvas_line']
-                    branch_width = 1.2
-                    branch_alpha = 0.7
-
-                self.ax.plot([x_parent, x_child], [y_child, y_child],
-                           color=branch_color, linewidth=branch_width, 
-                           zorder=2, alpha=branch_alpha, solid_capstyle='round')
+                if child not in self.clade_positions:
+                    continue
+                x_child, y_child = self.clade_positions[child]
+                color, width, alpha, z = _style(child)
+                self.ax.plot([x_parent, x_parent, x_child], [y_parent, y_child, y_child],
+                             color=color, linewidth=width, alpha=alpha, zorder=z,
+                             solid_capstyle='round', solid_joinstyle='round')
 
         for clade in self.tree.find_clades():
             if clade not in self.clade_positions:
                 continue
-            
             x, y = self.clade_positions[clade]
-            
-            is_marked, tag = is_descendant_of_marked(clade)
-            color = self._get_tag_color(tag) if is_marked else PALETTE['canvas_line']
-            
+            num = labels.get(clade)
+            mark = self.marks.get(clade)
+            marked = num is not None
+            color = self._get_tag_color(f"#{num}") if marked else PALETTE['canvas_line']
             if clade.is_terminal():
-                size = 90 if is_marked else 45
-                edge_width = 2.2 if is_marked else 1.0
+                size, edge_width = (90, 2.2) if marked else (45, 1.0)
             else:
-                size = 55 if is_marked else 28
-                edge_width = 1.8 if is_marked else 0.8
-            
-            edge_color = PALETTE['canvas_text'] if is_marked else PALETTE['canvas_line']
-            
-            scatter = self.ax.scatter(
-                [x], [y],
-                s=size,
-                c=[color],
-                edgecolors=edge_color,
-                linewidths=edge_width,
-                picker=12,
-                zorder=100,
-                alpha=0.95
-            )
-            
+                size, edge_width = (55, 1.8) if marked else (28, 0.8)
+            # a clicked node is drawn as a square when its whole clade is labelled
+            marker = 's' if mark and mark[1] == branch_labels.CLADE else 'o'
+            scatter = self.ax.scatter([x], [y], s=size, c=[color], marker=marker,
+                                      edgecolors=PALETTE['canvas_text'] if mark else PALETTE['canvas_line'],
+                                      linewidths=edge_width, picker=12, zorder=100, alpha=0.95)
             scatter.clade_obj = clade
             self.scatter_objects.append((scatter, clade))
 
+        label_offset = getattr(self, '_cladogram_depth', 10) * 0.03
         for term in self.tree.get_terminals():
             if term not in self.clade_positions:
                 continue
-            
             x, y = self.clade_positions[term]
-            name = term.name or "terminal"
-            
-            is_marked, tag = is_descendant_of_marked(term)
-            if is_marked:
-                text_color = self._get_tag_color(tag)
-                weight = 'bold'
-                fontsize = 11
-            else:
-                text_color = PALETTE['canvas_text']
-                weight = 'normal'
-                fontsize = 10
-            
-            label_offset = getattr(self, '_cladogram_depth', 10) * 0.03
-            self.ax.text(x + label_offset, y, name,
-                        va='center', ha='left',
-                        fontsize=fontsize,
-                        color=text_color,
-                        weight=weight,
-                        zorder=20,
-                        family='monospace')
+            num = labels.get(term)
+            self.ax.text(x + label_offset, y, term.name or "terminal", va='center', ha='left',
+                         fontsize=11 if num is not None else 10,
+                         color=self._get_tag_color(f"#{num}") if num is not None else PALETTE['canvas_text'],
+                         weight='bold' if num is not None else 'normal', zorder=20, family='monospace')
 
         if self.clade_positions:
             all_x = [x for x, y in self.clade_positions.values()]
             all_y = [y for x, y in self.clade_positions.values()]
-            
             min_x, max_x = min(all_x), max(all_x)
             min_y, max_y = min(all_y), max(all_y)
-            
-            max_label_len = 0
             try:
                 max_label_len = max(len(t.name or '') for t in self.tree.get_terminals())
             except Exception:
                 max_label_len = 20
-            
             x_range = max_x - min_x if max_x > min_x else 0.01
             # right margin sized to the longest name so labels are not cut off
             right_margin = max(x_range * (0.25 + 0.012 * max_label_len), 0.003)
-            
             self.ax.set_xlim(min_x - x_range * 0.03, max_x + right_margin)
             self.ax.set_ylim(min_y - 2.5, max_y + 2.5)
 
         self.canvas.draw_idle()
 
     def _on_pick(self, event):
-        """Label the clicked node."""
-        artist = event.artist
-        clade = getattr(artist, 'clade_obj', None)
+        """Each click on a node moves it to its next state. A tip: labelled, then not.
+        An internal node: its ancestral branch only, then the whole clade, then not
+        labelled. In the Branch model the first click asks for the label number."""
+        clade = getattr(event.artist, 'clade_obj', None)
         if clade is None:
             return
-
-        if self.mode == 'branchsite':
-            current_tag = self.marked_clades.get(clade)
-            
-            if current_tag == '#1':
-                self._remove_tag_recursively(clade)
-                self.parent.append_log(tr("Marca #1 removida de ", "Tag #1 removed from ") + f"{self._get_clade_name(clade)}\n")
-            else:
-                self._remove_tag_recursively(clade)
-                self._apply_tag_recursively(clade, '#1')
-                self.marked_clades[clade] = '#1'
-                self.parent.append_log(tr("Marca #1 aplicada a ", "Tag #1 applied to ") + f"{self._get_clade_name(clade)}\n")
-        
-        else:
-            current_tag = self.marked_clades.get(clade)
-            clade_name = self._get_clade_name(clade)
-            
-            if current_tag:
-                response = ask_string(self, TEXTS["tag_dialog_edit_title"],
-                                      TEXTS["tag_dialog_edit_prompt"].format(tag=current_tag))
-                
-                if response:
-                    response = response.strip().lower()
-                    if response in ('remove', 'remover'):
-                        self._remove_tag_recursively(clade)
-                        self.parent.append_log(tr(f"Marca {current_tag} removida de {clade_name}", f"Tag {current_tag} removed from {clade_name}") + "\n")
-                    elif response.isdigit():
-                        self._remove_tag_recursively(clade)
-                        new_tag = f"#{response}"
-                        self._apply_tag_recursively(clade, new_tag)
-                        self.marked_clades[clade] = new_tag
-                        self.parent.append_log(tr(f"Marca alterada para {new_tag} em {clade_name}", f"Tag changed to {new_tag} on {clade_name}") + "\n")
+        if clade is self.tree.root:
+            self.parent.append_log(TEXTS["tree_labeler_root"] + "\n")
+            return
+        name = self._get_clade_name(clade)
+        mark = self.marks.get(clade)
+        if mark is None:
+            if self.mode == 'branchsite':
+                num = 1
             else:
                 response = ask_string(self, TEXTS["tag_dialog_new_title"], TEXTS["tag_dialog_new_prompt"])
-                
-                if response and response.strip().isdigit():
-                    new_tag = f"#{response.strip()}"
-                    self._remove_tag_recursively(clade)
-                    self._apply_tag_recursively(clade, new_tag)
-                    self.marked_clades[clade] = new_tag
-                    self.parent.append_log(tr(f"Marca {new_tag} aplicada a {clade_name}", f"Tag {new_tag} applied to {clade_name}") + "\n")
-
+                if not response or not response.strip().isdigit() or int(response.strip()) < 1:
+                    return
+                num = int(response.strip())
+            self.marks[clade] = (num, branch_labels.STEM)
+            what = tr("ramo terminal", "terminal branch") if clade.is_terminal() else \
+                tr("ramo ancestral", "ancestral branch")
+            self.parent.append_log(f"#{num}: {what} {tr('de', 'of')} {name}\n")
+        elif mark[1] == branch_labels.STEM and not clade.is_terminal():
+            self.marks[clade] = (mark[0], branch_labels.CLADE)
+            self.parent.append_log(f"#{mark[0]}: {tr('clado inteiro', 'whole clade')} {name}\n")
+        else:
+            del self.marks[clade]
+            self.parent.append_log(tr(f"Marca #{mark[0]} removida de {name}",
+                                      f"Label #{mark[0]} removed from {name}") + "\n")
         self._draw_tree()
         self._refresh_legend()
-
-    def _apply_tag_recursively(self, clade, tag: str):
-        """Aplica tag aos terminais descendentes"""
-        clades_to_remove = []
-        for marked_clade in list(self.marked_clades.keys()):
-            if marked_clade in clade.find_clades():
-                clades_to_remove.append(marked_clade)
-        
-        for old_marked in clades_to_remove:
-            self.marked_clades.pop(old_marked, None)
-        
-        for terminal in clade.get_terminals():
-            self.clade_tags[terminal] = tag
-
-    def _remove_tag_recursively(self, clade):
-        """Remove tag dos terminais descendentes"""
-        self.marked_clades.pop(clade, None)
-        
-        for terminal in clade.get_terminals():
-            self.clade_tags.pop(terminal, None)
-        
-        for desc in list(self.marked_clades.keys()):
-            if desc in clade.find_clades() and desc != clade:
-                self.marked_clades.pop(desc, None)
 
     def _get_clade_name(self, clade) -> str:
         """Readable name of a clade."""
         if clade.is_terminal():
             return clade.name or "terminal"
-        else:
-            terminals = clade.get_terminals()
-            if len(terminals) <= 3:
-                names = [t.name or "?" for t in terminals[:3]]
-                return f"clado({', '.join(names)})"
-            else:
-                return f"clado({len(terminals)} terminais)"
+        terminals = clade.get_terminals()
+        if len(terminals) <= 3:
+            return "(" + ", ".join(t.name or "?" for t in terminals) + ")"
+        return tr(f"({len(terminals)} terminais)", f"({len(terminals)} tips)")
 
     def _get_tag_color(self, tag: str) -> str:
         """Colour of a label number."""
         if not tag or not tag.startswith('#'):
             return '#888888'
-        
         try:
             num = int(tag.replace('#', ''))
             cmap = plt.get_cmap('tab20')
-            rgba = cmap(num % 20)
-            return matplotlib.colors.to_hex(rgba)
+            return matplotlib.colors.to_hex(cmap(num % 20))
         except Exception:
             return '#ff0000'
 
-    def _delete_tag(self, tag: str):
-        """Remove a label everywhere and redraw."""
-        for clade in [c for c, t in list(self.clade_tags.items()) if t == tag]:
-            self.clade_tags.pop(clade, None)
-        for clade in [c for c, t in list(self.marked_clades.items()) if t == tag]:
-            self.marked_clades.pop(clade, None)
+    def _delete_tag(self, num: int):
+        """Remove a label number everywhere and redraw."""
+        for clade in [c for c, m in self.marks.items() if m[0] == num]:
+            del self.marks[clade]
         self._draw_tree()
         self._refresh_legend()
-        self.parent.append_log(tr(f"Marca {tag} removida.", f"Tag {tag} removed.") + "\n")
+        self.parent.append_log(tr(f"Marca #{num} removida.", f"Label #{num} removed.") + "\n")
 
     def _refresh_legend(self):
-        """Refresh the legend of active labels."""
+        """Each active label with its colour, number of branches and a plain sentence
+        saying which branches it covers (the same sentence goes to methods_text.txt)."""
         for widget in self.legend_frame.winfo_children():
             widget.destroy()
-
-        active_tags = sorted(set(self.clade_tags.values()))
-
-        if not active_tags:
+        labels = self._labels()
+        if not labels:
             ctk.CTkLabel(self.legend_frame, text=TEXTS["tree_labeler_no_tags"],
                          text_color=self.TEXT_TERTIARY, font=(_FONT_UI, FONT_SIZE['sm'])
                          ).pack(anchor='w', padx=SPACE['md'], pady=SPACE['md'])
-        else:
-            for tag in active_tags:
-                color = self._get_tag_color(tag)
-
-                row_frame = ctk.CTkFrame(self.legend_frame, fg_color="transparent")
-                row_frame.pack(fill='x', padx=SPACE['sm'], pady=SPACE['xs'])
-
-                color_box = Canvas(row_frame, width=22, height=16, highlightthickness=0)
-                color_box.configure(bg=self.BG_CARD)
-                color_box.create_rectangle(2, 2, 20, 14, fill=color, outline=PALETTE['canvas_line'], width=1)
-                color_box.pack(side='left', padx=SPACE['xs'])
-
-                tag_label = ctk.CTkLabel(row_frame, text=tag,
-                                         font=(_FONT_UI, FONT_SIZE['sm'], "bold"),
-                                         text_color=color)
-                tag_label.pack(side='left', padx=(0, SPACE['xs']))
-
-                count = sum(1 for t in self.clade_tags.values() if t == tag)
-                ctk.CTkLabel(row_frame, text=f"({count})",
-                             font=(_FONT_UI, FONT_SIZE['sm']),
-                             text_color=self.TEXT_TERTIARY).pack(side='left')
-
-                del_btn = ctk.CTkButton(
-                    row_frame, text="X", width=24, height=24,
-                    fg_color='transparent',
-                    hover_color=hover_tint(self.DANGER, self.BG_CARD),
-                    text_color=self.TEXT_TERTIARY,
-                    border_width=0,
-                    corner_radius=RADIUS['field'],
-                    font=(_FONT_UI, FONT_SIZE['sm'], "bold"),
-                    command=lambda t=tag: self._delete_tag(t)
-                )
-                del_btn.pack(side='right', padx=(0, SPACE['xs']))
+            return
+        lines = branch_labels.describe(self.tree, labels, lang=get_language())
+        for num, line in zip(sorted(set(labels.values())), lines):
+            color = self._get_tag_color(f"#{num}")
+            row_frame = ctk.CTkFrame(self.legend_frame, fg_color="transparent")
+            row_frame.pack(fill='x', padx=SPACE['sm'], pady=(SPACE['xs'], 0))
+            color_box = Canvas(row_frame, width=22, height=16, highlightthickness=0)
+            color_box.configure(bg=self.BG_CARD)
+            color_box.create_rectangle(2, 2, 20, 14, fill=color, outline=PALETTE['canvas_line'], width=1)
+            color_box.pack(side='left', padx=SPACE['xs'])
+            ctk.CTkLabel(row_frame, text=f"#{num}", font=(_FONT_UI, FONT_SIZE['sm'], "bold"),
+                         text_color=color).pack(side='left', padx=(0, SPACE['xs']))
+            count = sum(1 for n in labels.values() if n == num)
+            ctk.CTkLabel(row_frame, text=tr(f"({count} ramo{'s' if count != 1 else ''})",
+                                            f"({count} branch{'es' if count != 1 else ''})"),
+                         font=(_FONT_UI, FONT_SIZE['sm']), text_color=self.TEXT_TERTIARY).pack(side='left')
+            ctk.CTkButton(row_frame, text="X", width=24, height=24, fg_color='transparent',
+                          hover_color=hover_tint(self.DANGER, self.BG_CARD), text_color=self.TEXT_TERTIARY,
+                          border_width=0, corner_radius=RADIUS['field'],
+                          font=(_FONT_UI, FONT_SIZE['sm'], "bold"),
+                          command=lambda n=num: self._delete_tag(n)).pack(side='right', padx=(0, SPACE['xs']))
+            ctk.CTkLabel(self.legend_frame, text=line.split(': ', 1)[-1].split(' (')[0],
+                         wraplength=220, justify='left', font=(_FONT_UI, FONT_SIZE['xs']),
+                         text_color=self.TEXT_SECONDARY).pack(anchor='w', padx=(SPACE['md'] + 30, SPACE['sm']),
+                                                              pady=(0, SPACE['xs']))
 
     def _on_save(self):
-        """Save the labelled tree as Newick."""
-        import re
-
-        for c in self.tree.find_clades():
-            if getattr(c, 'name', None):
-                cleaned = re.sub(r"\s*#\d+\b", "", str(c.name)).strip()
-                c.name = cleaned if cleaned != '' else None
-
-        applied_terminals = 0
-
-        for clade, tag in list(self.clade_tags.items()):
-            if not tag:
-                continue
-
-            try:
-                current_name = clade.name or ''
-                base = re.sub(r"\s*#\d+\b", "", str(current_name)).strip()
-
-                if clade.is_terminal():
-                    new_name = f"{base}{tag}" if base else f"{tag}"
-                    if clade.name != new_name:
-                        clade.name = new_name
-                        applied_terminals += 1
-            except Exception:
-                continue
-
-        try:
-            sio = io.StringIO()
-            Phylo.write(self.tree, sio, 'newick')
-            newick_str = sio.getvalue().strip()
-            newick_str = re.sub(r"\s+", " ", newick_str)
-
-            if self.mode == 'branchsite':
-                self.parent.tree_branchsite_labeled = newick_str
-                self.parent.append_log(tr(f"[OK] Árvore branch-site salva ({applied_terminals} terminais).", f"[OK] Branch-site tree saved ({applied_terminals} tips).") + "\n")
-            else:
-                self.parent.tree_branch_labeled = newick_str
-                self.parent.append_log(tr(f"[OK] Árvore do modelo Branch salva ({applied_terminals} terminais).", f"[OK] Branch tree saved ({applied_terminals} tips).") + "\n")
-
-                branchsite_version = re.sub(r"\s*#(?!1)\d+\b", "", newick_str)
-                branchsite_version = re.sub(r"\s+", " ", branchsite_version).strip()
-                self.parent.tree_branchsite_labeled = branchsite_version
-
-        except Exception as e:
-            self.parent.append_log(tr("Erro ao gerar o Newick: ", "Error generating Newick: ") + f"{e}\n", "error")
-
+        """Save the labelled tree: '#N' on every labelled branch, exactly as drawn."""
+        labels = self._labels()
+        newick_str = branch_labels.to_newick(self.tree, labels)
+        for line in branch_labels.describe(self.tree, labels, lang=get_language()):
+            self.parent.append_log(line + "\n")
+        if self.mode == 'branchsite':
+            self.parent.tree_branchsite_labeled = newick_str
+            self.parent.append_log(tr("[OK] Árvore branch-site salva.", "[OK] Branch-site tree saved.") + "\n")
+        else:
+            self.parent.tree_branch_labeled = newick_str
+            self.parent.append_log(tr("[OK] Árvore do modelo Branch salva.", "[OK] Branch tree saved.") + "\n")
+            # the branch-site test uses only #1 (foreground); other numbers become background
+            self.parent.tree_branchsite_labeled = branch_labels.to_newick(
+                self.tree, {c: n for c, n in labels.items() if n == 1})
         self.destroy()
 
 

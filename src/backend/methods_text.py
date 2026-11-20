@@ -27,7 +27,8 @@ def build_methods_text(*, version: str, codeml_version: Optional[str], models: L
                        excluded_taxa: Optional[Dict[str, List[str]]] = None,
                        warm_start: bool = False, omega_starts: Sequence[float] = (),
                        n_own_trees: int = 0, beta_starts: int = 1,
-                       cleandata_removed: Optional[Dict[str, Tuple[int, int]]] = None) -> str:
+                       cleandata_removed: Optional[Dict[str, Tuple[int, int]]] = None,
+                       foreground: Optional[Dict[str, List[str]]] = None) -> str:
     cf = ctl.get('CodonFreq')
     cf_name = CODONFREQ_NAMES.get(int(cf), str(cf)) if cf is not None else '?'
     site = [m for m in _SITE_MODELS if m in models]
@@ -65,6 +66,10 @@ def build_methods_text(*, version: str, codeml_version: Optional[str], models: L
                   f"{n_own_trees} of the {n_genes} gene(s) were analysed with their own tree and the "
                   "others with a single tree")
                  + " (the gene-tree pairs are listed in run_config.json).")
+    for model, lines in (foreground or {}).items():
+        if lines:
+            s.append(f"Branch labels ({model} model): "
+                     + "; ".join(line.replace(": ", ", ", 1) for line in lines) + ".")
     tree = "Input trees were unrooted for the site models"
     if pruned:
         tree += " and pruned to the taxa present in each alignment"
